@@ -6,7 +6,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from deslop_core import Analyzer, DeslopError, profile_statistics, sha256_file, stable_id
+from deslop_core import Analyzer, DeslopError, profile_statistics, stable_id
 from formats import extract_source
 
 
@@ -23,7 +23,7 @@ def _files(paths: list[str]) -> list[Path]:
             if path.suffix.lower() in SUPPORTED:
                 found.append(path)
         else:
-            found.extend(item for item in path.rglob("*") if item.is_file() and item.suffix.lower() in SUPPORTED)
+            found.extend(item for item in path.rglob("*") if item.is_file() and not item.name.startswith("~$") and item.suffix.lower() in SUPPORTED)
     unique = {str(path).casefold(): path for path in found}
     return [unique[key] for key in sorted(unique)]
 
@@ -32,18 +32,18 @@ def _document_metrics(blocks: list[dict[str, Any]], findings: list[dict[str, Any
     texts = [block["text"] for block in blocks]
     sentences = [part.strip() for text in texts for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
     words = [re.findall(r"[A-Za-z][A-Za-z'-]*", text) for text in texts]
-    transitions = Counter()
+    transition_openings = 0
     for text in texts:
         first = re.match(r"^\s*([A-Za-z]+(?:\s+[A-Za-z]+){0,2})[,;:]", text)
         if first:
-            transitions[first.group(1).casefold()] += 1
+            transition_openings += 1
     headings = [block for block in blocks if block.get("role") == "headline"]
     bullets = [block for block in blocks if block.get("role") == "bullet"]
     return {
         "sentenceLengths": [len(re.findall(r"\b\w+\b", sentence)) for sentence in sentences],
         "blockLengths": [len(tokens) for tokens in words],
         "punctuation": {char: sum(text.count(char) for text in texts) for char in ["—", ":", ";", "(", ")"]},
-        "topTransitions": transitions.most_common(20),
+        "transitionOpeningCount": transition_openings,
         "headlineCount": len(headings),
         "bulletCount": len(bullets),
         "wordCount": sum(map(len, words)),
@@ -69,8 +69,13 @@ def build_profile(request: dict[str, Any]) -> dict[str, Any]:
     analyzer = Analyzer()
     documents: list[dict[str, Any]] = []
     seen_blocks: set[str] = set()
+    failed_documents = 0
     for path in files:
-        source = extract_source({"input": {"kind": "file", "path": str(path)}})
+        try:
+            source = extract_source({"input": {"kind": "file", "path": str(path)}})
+        except Exception:
+            failed_documents += 1
+            continue
         deduped = []
         for block in source["blocks"]:
             normalized = re.sub(r"\s+", " ", block["text"].strip()).casefold()
@@ -81,12 +86,13 @@ def build_profile(request: dict[str, Any]) -> dict[str, Any]:
         findings, _ = analyzer.analyze(deduped, request["genre"])
         metrics = _document_metrics(deduped, findings)
         documents.append({
-            "documentHash": sha256_file(path),
             "format": path.suffix.lower().lstrip("."),
             "blockCount": len(deduped),
             "metrics": metrics,
         })
 
+    if not documents:
+        raise DeslopError("None of the supplied supported documents could be parsed")
     slop_rates = [doc["metrics"]["highRiskCount"] / max(1, doc["blockCount"]) for doc in documents]
     rate_stats = profile_statistics(slop_rates)
     for doc, rate in zip(documents, slop_rates):
@@ -98,21 +104,25 @@ def build_profile(request: dict[str, Any]) -> dict[str, Any]:
         return profile_statistics(values)
 
     punctuation = {char: profile_statistics([doc["metrics"]["punctuation"][char] / max(1, doc["metrics"]["wordCount"]) * 1000 for doc in documents]) for char in ["—", ":", ";", "(", ")"]}
-    transitions = Counter()
-    for doc in documents:
-        for label, count in doc["metrics"]["topTransitions"]:
-            transitions[label] += count * doc["weight"]
+    transition_rates = [doc["metrics"]["transitionOpeningCount"] / max(1, doc["blockCount"]) for doc in documents]
     return {
         "schemaVersion": "deslop-profile/v1",
         "id": request["id"],
         "genre": request["genre"],
         "privacy": {"rawTextStored": False, "excerptTextStored": False, "approvedExcerptIds": request.get("approvedExcerptIds", [])},
-        "corpus": {"documentCount": len(documents), "uniqueBlockCount": len(seen_blocks), "documents": documents},
+        "corpus": {
+            "documentCount": len(documents),
+            "failedDocumentCount": failed_documents,
+            "uniqueBlockCount": len(seen_blocks),
+            "formatCounts": dict(Counter(doc["format"] for doc in documents)),
+            "downweightedDocumentCount": sum(doc["weight"] < 1.0 for doc in documents),
+            "perDocumentDataStored": False,
+        },
         "preferences": {
             "sentenceLength": combined("sentenceLengths"),
             "blockLength": combined("blockLengths"),
             "punctuationPerThousandWords": punctuation,
-            "transitions": [{"text": key, "weightedCount": round(value, 3)} for key, value in transitions.most_common(30)],
+            "transitionOpeningRate": profile_statistics(transition_rates),
         },
         "robustness": {"method": "median/MAD/IQR with duplicate boilerplate counted once", "highRiskRate": rate_stats},
     }

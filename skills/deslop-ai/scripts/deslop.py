@@ -382,7 +382,6 @@ def profile(request_path: Path, out: Path) -> int:
     result = build_profile(request)
     temp = Path(tempfile.mkdtemp(prefix=f".{resolved.name}-", dir=str(resolved.parent)))
     write_json(temp / "profile.json", result)
-    write_json(temp / "profile-request.json", request)
     os.replace(temp, resolved)
     return 0
 

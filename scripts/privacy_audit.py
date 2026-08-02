@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import re
 from pathlib import Path
 
 
@@ -35,7 +36,7 @@ def main() -> int:
             violations.append(f"generated or private data: {relative}")
         if path.is_file() and path.stat().st_size < 4_000_000 and path.suffix.casefold() in {".py", ".md", ".json", ".yaml", ".yml", ".txt"}:
             text = path.read_text(encoding="utf-8", errors="ignore").casefold()
-            if "c:\\users\\micgr\\onedrive" in text or "c:/users/micgr/onedrive" in text:
+            if re.search(r"c:[\\/]+users[\\/]+[^\\/]+[\\/]+(?:onedrive|downloads|documents|desktop)[\\/]", text, re.I):
                 violations.append(f"absolute private source path embedded: {relative}")
     if violations:
         print("Privacy audit failed:")

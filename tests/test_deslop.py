@@ -148,6 +148,10 @@ class TestDeSlop(unittest.TestCase):
             self.assertFalse(profile["privacy"]["rawTextStored"])
             serialized = json.dumps(profile)
             self.assertNotIn("Unlocking Transformative Excellence", serialized)
+            self.assertNotIn("documents", profile["corpus"])
+            self.assertNotIn("@", serialized)
+            self.assertNotIn(str(self.fixtures), serialized)
+            self.assertFalse((output / "profile-request.json").exists())
 
 
 if __name__ == "__main__":

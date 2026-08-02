@@ -9,7 +9,7 @@ DeSlopAI is a local Codex skill and plugin for finding and conservatively rewrit
 - Numbers, quotations, citations, URLs, DOIs, and declared terminology are protected.
 - Edits are locator- and source-hash-bound, originals remain byte-identical, and outputs use `-deslopped` suffixes.
 - PowerPoint and Word copies are opened in Microsoft Office when available. Geometry, package relationships, non-text parts, and structural invariants are recomputed.
-- Private consulting and academic profiles store aggregate metrics and hashes, not corpus text.
+- Private consulting and academic profiles store anonymous corpus-level metrics only: no text, source paths, filenames, email addresses, per-document hashes, or per-document measurements.
 
 Supported in v0.1.0: PPTX, DOCX, PDF audit, Markdown, plain text, and pasted text. PDF is audit-only. SmartArt, mixed formatting, fields, equations, citation fields, tracked changes, hyperlinks, notes, and auxiliary Office text are audited or abstained where a format-faithful edit cannot be proven.
 
