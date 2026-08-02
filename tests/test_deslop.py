@@ -29,8 +29,10 @@ def request(input_data: dict, operation: str = "audit") -> dict:
 class TestDeSlop(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        build()
         cls.fixtures = ROOT / "tests" / "fixtures"
+        required = [cls.fixtures / name for name in ["sample.txt", "sample.md", "sample.docx", "sample.pptx", "sample.pdf"]]
+        if not all(path.exists() for path in required):
+            build()
         cls.analyzer = Analyzer()
 
     def test_catalog_positive_cases_at_least_50(self) -> None:
