@@ -145,7 +145,7 @@ def validate_semantic(data: Any, request_id: str, blocks_by_id: dict[str, dict[s
     if not isinstance(assessments, list):
         raise DeslopError("assessments must be an array")
     seen: set[str] = set()
-    required = {"blockId", "sourceHash", "verdict", "meaning", "valueAdded", "relevance", "reason", "improvement"}
+    required = {"blockId", "sourceHash", "verdict", "meaning", "valueAdded", "relevance", "reason", "improvement", "replacement"}
     for item in assessments:
         if not isinstance(item, dict) or set(item) != required:
             raise DeslopError("Every semantic assessment must use the exact v1 fields")
@@ -164,6 +164,10 @@ def validate_semantic(data: Any, request_id: str, blocks_by_id: dict[str, dict[s
                 raise DeslopError(f"Semantic {key} must be a string")
         if item["verdict"] == "needs-improvement" and (not item["reason"].strip() or not item["improvement"].strip()):
             raise DeslopError(f"needs-improvement requires reason and improvement: {block_id}")
+        if len(item["replacement"]) > 4000:
+            raise DeslopError(f"Semantic replacement exceeds 4,000 characters: {block_id}")
+        if item["replacement"].strip() and item["verdict"] != "needs-improvement":
+            raise DeslopError(f"Only needs-improvement assessments may propose a replacement: {block_id}")
     return data
 
 

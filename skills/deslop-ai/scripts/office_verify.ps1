@@ -10,6 +10,7 @@ $result = [ordered]@{
     applicable = $true
     passed = $false
     application = $null
+    openedWithoutRepair = $false
     reason = $null
     repaired = $false
     overflow = @()
@@ -29,6 +30,7 @@ try {
         $app = New-Object -ComObject PowerPoint.Application
         $app.DisplayAlerts = 1
         $presentation = $app.Presentations.Open($resolved, $true, $false, $false)
+        $result.openedWithoutRepair = $true
         $result.slideCount = $presentation.Slides.Count
         for ($slideIndex = 1; $slideIndex -le $presentation.Slides.Count; $slideIndex++) {
             $slide = $presentation.Slides.Item($slideIndex)
@@ -83,6 +85,7 @@ try {
         $app.Visible = $false
         $app.DisplayAlerts = 0
         $document = $app.Documents.Open($resolved, $false, $true, $false)
+        $result.openedWithoutRepair = $true
         $result.pageCount = $document.ComputeStatistics(2)
         $document.Close(0)
         $app.Quit()

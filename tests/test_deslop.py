@@ -99,6 +99,30 @@ class TestDeSlop(unittest.TestCase):
             verify = subprocess.run([sys.executable, str(SKILL / "scripts" / "deslop.py"), "request-verify", str(run), "--out", str(external)], capture_output=True, text=True)
             self.assertEqual(0, verify.returncode, verify.stderr)
 
+    def test_hash_bound_semantic_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            temp = Path(td)
+            req = request({"kind": "text", "text": "Mission aligned. Evidence first."}, "audit-and-rewrite")
+            req["id"] = "semantic-replacement-test"
+            request_path = temp / "request.json"; request_path.write_text(json.dumps(req), encoding="utf-8")
+            packet_path = temp / "packet.json"
+            ingest = subprocess.run([sys.executable, str(SKILL / "scripts" / "deslop.py"), "ingest", str(request_path), "--out", str(packet_path)], capture_output=True, text=True)
+            self.assertEqual(0, ingest.returncode, ingest.stderr)
+            packet = json.loads(packet_path.read_text(encoding="utf-8")); block = packet["blocks"][0]
+            assessment = {
+                "blockId": block["blockId"], "sourceHash": block["sourceHash"], "verdict": "needs-improvement",
+                "meaning": "Signals a preference for evidence.", "valueAdded": "Too generic to guide a decision.",
+                "relevance": "Prominent copy must state the action.", "reason": "Universal-fit slogan.",
+                "improvement": "State the action directly.", "replacement": "Validate one buyer decision first.",
+            }
+            semantic_path = temp / "semantic.json"; semantic_path.write_text(json.dumps({"schemaVersion": "deslop-semantic/v1", "requestId": req["id"], "assessments": [assessment]}), encoding="utf-8")
+            run = temp / "run"
+            call = subprocess.run([sys.executable, str(SKILL / "scripts" / "deslop.py"), "request", str(request_path), "--semantic-findings", str(semantic_path), "--out", str(run)], capture_output=True, text=True)
+            self.assertEqual(0, call.returncode, call.stderr)
+            self.assertEqual("Validate one buyer decision first.", (run / "revised-text.txt").read_text(encoding="utf-8"))
+            plan = json.loads((run / "rewrite-plan.json").read_text(encoding="utf-8"))
+            self.assertEqual("agent-semantic-source-bound", plan["edits"][0]["rewriteRules"][0])
+
     def test_format_extractors_and_pdf_audit_policy(self) -> None:
         for name in ["sample.docx", "sample.pptx", "sample.pdf", "sample.md"]:
             source = extract_source(request({"kind": "file", "path": str(self.fixtures / name)}))

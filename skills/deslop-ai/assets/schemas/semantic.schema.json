@@ -11,13 +11,14 @@
       "type": "array",
       "items": {
         "type": "object", "additionalProperties": false,
-        "required": ["blockId", "sourceHash", "verdict", "meaning", "valueAdded", "relevance", "reason", "improvement"],
+        "required": ["blockId", "sourceHash", "verdict", "meaning", "valueAdded", "relevance", "reason", "improvement", "replacement"],
         "properties": {
           "blockId": {"type": "string"}, "sourceHash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
           "verdict": {"enum": ["meaningful", "needs-improvement", "exempt", "abstain"]},
           "meaning": {"type": "string", "maxLength": 1000}, "valueAdded": {"type": "string", "maxLength": 1000},
           "relevance": {"type": "string", "maxLength": 1000}, "reason": {"type": "string", "maxLength": 2000},
-          "improvement": {"type": "string", "maxLength": 3000}
+          "improvement": {"type": "string", "maxLength": 3000},
+          "replacement": {"type": "string", "maxLength": 4000}
         }
       }
     }

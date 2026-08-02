@@ -118,12 +118,20 @@ def _rewrite_plan(request: dict[str, Any], source: dict[str, Any], findings: lis
             suggested = assessment.get("improvement", "") if assessment["verdict"] == "needs-improvement" else "No content change proposed; retained because this container is audit-only or format-sensitive."
             abstentions.append({"blockId": block["blockId"], "locator": block["locator"], "reason": block.get("unsupportedReason", "Unsafe span"), "contentVerdict": assessment["verdict"], "suggestedAction": suggested})
             continue
-        replacement, reasons = conservative_rewrite(block["text"], request["genre"], request["preserveTerms"])
+        semantic_replacement = assessment.get("replacement", "").strip()
+        if semantic_replacement:
+            replacement, reasons = semantic_replacement, ["agent-semantic-source-bound"]
+            length_delta = abs(len(replacement) - len(block["text"])) / max(1, len(block["text"]))
+            if length_delta > 0.60:
+                abstentions.append({"blockId": block["blockId"], "locator": block["locator"], "reason": "Semantic replacement exceeds the conservative 60% length-change limit.", "suggestedAction": assessment["improvement"]})
+                continue
+        else:
+            replacement, reasons = conservative_rewrite(block["text"], request["genre"], request["preserveTerms"])
         if request["operation"] == "audit" or replacement == block["text"]:
             if assessment["verdict"] == "needs-improvement":
                 abstentions.append({
                     "blockId": block["blockId"], "locator": block["locator"],
-                    "reason": "Audit-only request" if request["operation"] == "audit" else "No source-supported conservative replacement can be generated deterministically.",
+                    "reason": "Audit-only request" if request["operation"] == "audit" else "No validated source-supported conservative replacement was provided.",
                     "suggestedAction": assessment["improvement"],
                 })
             continue
@@ -266,17 +274,43 @@ def run_request(request_path: Path, out: Path, semantic_path: Path | None) -> in
             revised_source = extract_source({**request, "input": {"kind": "file", "path": str(revised_path)}})
             invariant_problems = compare_invariants(source["invariants"], revised_source["invariants"], source["kind"])
             checks.append({"name": "format invariants", "passed": not invariant_problems, "detail": "; ".join(invariant_problems) or "unchanged"})
-            revised_by_locator = {block["locator"]: block["text"] for block in _eligible(revised_source)}
-            replacements = {edit["locator"]: edit["replacement"] for edit in plan["edits"]}
-            expected_by_locator = {block["locator"]: replacements.get(block["locator"], block["text"]) for block in blocks}
-            text_differences = sorted(locator for locator in set(expected_by_locator) | set(revised_by_locator) if expected_by_locator.get(locator) != revised_by_locator.get(locator))
+            if source["kind"] == "text":
+                expected_text_after = source["text"]
+                for edit in sorted(plan["edits"], key=lambda item: item["address"]["start"], reverse=True):
+                    start, end = edit["address"]["start"], edit["address"]["end"]
+                    expected_text_after = expected_text_after[:start] + edit["replacement"] + expected_text_after[end:]
+                actual_text_after = revised_path.read_text(encoding="utf-8")
+                text_differences = [] if expected_text_after == actual_text_after else ["pasted-text"]
+            else:
+                revised_by_locator = {block["locator"]: block["text"] for block in _eligible(revised_source)}
+                replacements = {edit["locator"]: edit["replacement"] for edit in plan["edits"]}
+                expected_by_locator = {block["locator"]: replacements.get(block["locator"], block["text"]) for block in blocks}
+                text_differences = sorted(locator for locator in set(expected_by_locator) | set(revised_by_locator) if expected_by_locator.get(locator) != revised_by_locator.get(locator))
             checks.append({"name": "no unplanned text edits", "passed": not text_differences, "detail": "all source spans match the validated plan" if not text_differences else f"unexpected differences: {text_differences[:20]}"})
             expected_text = "\n".join(block["text"] for block in blocks)
             revised_text = "\n".join(block["text"] for block in _eligible(revised_source))
             okay, details = protected_equal(expected_text, revised_text, request["preserveTerms"])
             checks.append({"name": "protected tokens", "passed": okay, "detail": "unchanged" if okay else json.dumps(details, ensure_ascii=False)[:1000]})
             office = _office_verify(revised_path, temp / "office-verification.json")
-            checks.append({"name": "Office open/render", "passed": bool(office.get("passed")), "detail": office.get("reason", "Office opened the document without repair; overflow result recorded")})
+            if source["kind"] == "pptx" and source.get("path"):
+                source_office = _office_verify(Path(source["path"]), temp / "source-office-verification.json")
+                new_overflow = sorted(set(office.get("overflow", [])) - set(source_office.get("overflow", [])))
+                new_overlaps = sorted(set(office.get("objectOverlaps", [])) - set(source_office.get("objectOverlaps", [])))
+                office_passed = bool(office.get("openedWithoutRepair")) and bool(source_office.get("openedWithoutRepair")) and not new_overflow and not new_overlaps
+                office["baselineComparison"] = {
+                    "sourceOverflowCount": len(source_office.get("overflow", [])),
+                    "revisedOverflowCount": len(office.get("overflow", [])),
+                    "newOverflow": new_overflow,
+                    "sourceObjectOverlapCount": len(source_office.get("objectOverlaps", [])),
+                    "revisedObjectOverlapCount": len(office.get("objectOverlaps", [])),
+                    "newObjectOverlaps": new_overlaps,
+                }
+                write_json(temp / "office-verification.json", office)
+                office_detail = f"PowerPoint opened source and revision without repair; new overflow={len(new_overflow)}, new text/chart overlaps={len(new_overlaps)}. Existing source-layout warnings are recorded separately."
+            else:
+                office_passed = bool(office.get("passed"))
+                office_detail = office.get("reason", "Office opened the document without repair; overflow result recorded")
+            checks.append({"name": "Office open/render", "passed": office_passed, "detail": office_detail})
             rescored = _rescore(request, revised_path)
             write_json(temp / "revised-source-map.json", rescored.pop("sourceMap"))
         elif source["kind"] == "pdf" and request["operation"] == "audit-and-rewrite":

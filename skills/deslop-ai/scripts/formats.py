@@ -17,6 +17,23 @@ def _package_hashes(path: Path, prefixes: tuple[str, ...], suffixes: tuple[str, 
     return hashes
 
 
+def _relationship_inventory(path: Path) -> dict[str, list[list[str]]]:
+    from lxml import etree
+    inventory: dict[str, list[list[str]]] = {}
+    with zipfile.ZipFile(path) as package:
+        for name in sorted(item for item in package.namelist() if item.endswith(".rels")):
+            root = etree.fromstring(package.read(name))
+            entries = []
+            for relationship in root:
+                entries.append(sorted([
+                    relationship.get("Type", ""),
+                    relationship.get("Target", ""),
+                    relationship.get("TargetMode", ""),
+                ]))
+            inventory[name] = sorted(entries)
+    return inventory
+
+
 def _auxiliary_word_blocks(path: Path) -> list[dict[str, Any]]:
     blocks: list[dict[str, Any]] = []
     try:
@@ -199,7 +216,7 @@ def extract_docx(path: Path) -> dict[str, Any]:
         "paragraphCount": len(doc.paragraphs), "tableCount": len(doc.tables), "sectionCount": len(doc.sections),
         "tableDimensions": [[len(table.rows), len(table.columns)] for table in doc.tables],
         "styleNames": sorted(style.name for style in doc.styles),
-        "relationships": _package_hashes(path, (), (".rels",)),
+        "relationships": _relationship_inventory(path),
         "nonTextParts": _package_hashes(path, ("word/media/", "word/embeddings/")),
         "fieldCount": xml.count(b"fldChar") + xml.count(b"instrText"),
         "contentControlCount": xml.count(b"<w:sdt"),
@@ -360,8 +377,15 @@ def extract_pptx(path: Path) -> dict[str, Any]:
         "slideCount": len(prs.slides), "slideWidth": int(prs.slide_width), "slideHeight": int(prs.slide_height),
         "masterCount": len(prs.slide_masters), "layoutCount": sum(len(master.slide_layouts) for master in prs.slide_masters),
         "geometry": geometry,
-        "nonTextParts": _package_hashes(path, ("ppt/media/", "ppt/charts/", "ppt/diagrams/", "ppt/embeddings/", "ppt/slideMasters/", "ppt/slideLayouts/", "ppt/theme/")),
-        "relationships": _package_hashes(path, (), (".rels",)),
+        "slideBindings": [
+            {
+                "layout": slide.slide_layout.name,
+                "master": slide.slide_layout.slide_master.name,
+            }
+            for slide in prs.slides
+        ],
+        "nonTextParts": _package_hashes(path, ("ppt/media/", "ppt/charts/", "ppt/diagrams/", "ppt/embeddings/", "ppt/theme/")),
+        "relationships": _relationship_inventory(path),
     }
     return {"kind": "pptx", "path": str(path), "sourceHash": sha256_file(path), "blocks": blocks, "invariants": invariants}
 
@@ -493,7 +517,7 @@ def apply_edits(source_map: dict[str, Any], edits: list[dict[str, Any]], output:
 def compare_invariants(before: dict[str, Any], after: dict[str, Any], kind: str) -> list[str]:
     problems = []
     if kind == "pptx":
-        for key in ("slideCount", "slideWidth", "slideHeight", "masterCount", "layoutCount", "geometry", "nonTextParts", "relationships"):
+        for key in ("slideCount", "slideWidth", "slideHeight", "masterCount", "layoutCount", "slideBindings", "geometry", "nonTextParts", "relationships"):
             if before.get(key) != after.get(key):
                 problems.append(f"PPTX invariant changed: {key}")
     elif kind == "docx":

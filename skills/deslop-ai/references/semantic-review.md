@@ -65,3 +65,4 @@ Never invent the fact that would make a block valuable. Prefer:
 - converting a topic headline into a supported takeaway;
 - asking for the missing evidence when it is essential.
 
+Set `replacement` to a complete source-faithful replacement only when the existing source already supports it. Otherwise leave `replacement` empty and use `improvement` to state what evidence or decision is missing. Replacements must preserve protected tokens, remain within the original block's role and formatting capacity, and may not add a claim, number, name, citation, or implication that the source does not support.
