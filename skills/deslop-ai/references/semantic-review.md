@@ -4,9 +4,10 @@
 
 1. Coverage rule
 2. Block roles
-3. Value test
-4. Verdicts
-5. Improvement behavior
+3. Container and standalone-meaning review
+4. Value test
+5. Verdicts
+6. Improvement behavior
 
 ## 1. Coverage rule
 
@@ -22,7 +23,29 @@ Do not assess page numbers, dates used solely as running furniture, confidential
 - **Table cell/caption:** label or explain a real relationship; short labels can be meaningful.
 - **Footer/source/legal:** classify as furniture or required boilerplate.
 
-## 3. Value test
+## 3. Container and standalone-meaning review
+
+Read the complete slide, page, message, or section before assessing its blocks. First write its literal proposition in plain language: who or what is doing what, under which condition, with what evidence or consequence. If that proposition cannot be stated from the visible content, the container fails even when each sentence is grammatical.
+
+Apply two tests to every substantive block:
+
+1. **Local meaning:** Does the block make sense in relation to the other visible blocks in the same container?
+2. **Standalone meaning:** Would a reader who has not heard the presenter understand the block's subject and purpose if it were copied into an agenda, excerpt, screenshot, or summary?
+
+A headline may rely on nouns that are clearly defined elsewhere on the same slide or page. It may not rely on presenter narration, a distant slide, or an undefined abstraction. Flag vague referents and containers such as `this`, `these`, `it`, `wedge`, `route`, `decision`, `asset`, `capability`, `model`, `chain`, `boundary`, `platform`, or `solution` when the visible context does not say exactly what they denote. These words are not defects by themselves; the defect is missing referential meaning.
+
+Also flag:
+
+- a topic label presented as though it were a conclusion;
+- a sentence fragment whose missing clause carries the actual point;
+- a technically grammatical title that omits the actor, object, condition, comparison, or consequence needed to understand it;
+- a headline that merely announces the content below rather than interpreting it;
+- multiple meaningful blocks that do not combine into a coherent standalone proposition;
+- shorthand that is intelligible only to the author or project team.
+
+When a slide or page fails at container level, bind `needs-improvement` to the headline or highest-level substantive block and explain the missing relationship. Do not let individually meaningful cards or bullets compensate for a meaningless headline.
+
+## 4. Value test
 
 Answer all five:
 
@@ -47,14 +70,14 @@ Indicators of low value include:
 
 Concrete nouns and numbers are not automatically meaningful. A metric without a denominator, source, baseline, or decision may still fail.
 
-## 4. Verdicts
+## 5. Verdicts
 
 - `meaningful`: state the meaning and unique value.
 - `needs-improvement`: identify the missing information and give a safe improvement or an explicit request for facts.
 - `exempt`: identify the furniture/legal/source role.
 - `abstain`: explain why meaning cannot be safely judged.
 
-## 5. Improvement behavior
+## 6. Improvement behavior
 
 Never invent the fact that would make a block valuable. Prefer:
 

@@ -45,6 +45,14 @@ class TestDeSlop(unittest.TestCase):
             block = {"blockId": f"b{index}", "locator": f"test:{index}", "text": text, "sourceHash": "h", "scope": "test", "role": "paragraph"}
             self.assertTrue(self.analyzer.analyze_block(block, "general"), term)
 
+    def test_semantic_review_requires_standalone_container_meaning(self) -> None:
+        guidance = (SKILL / "references" / "semantic-review.md").read_text(encoding="utf-8")
+        skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Container and standalone-meaning review", guidance)
+        self.assertIn("presenter narration", guidance)
+        self.assertIn("coherent standalone proposition", guidance)
+        self.assertIn("standalone-meaning gate", skill)
+
     def test_negative_controls_do_not_trigger_high_severity_value_accusation(self) -> None:
         controls = [
             "Revenue increased 14% after the Berlin team changed pricing.",

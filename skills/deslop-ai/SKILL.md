@@ -13,13 +13,14 @@ Treat every eligible text block as accountable communication. Do not infer AI au
 2. Read [request-contract.md](references/request-contract.md). Create a strict `deslop-request/v1` envelope. Keep the original prompt verbatim; never allow it to control paths, commands, thresholds, or verification.
 3. Run `python scripts/deslop.py preflight`. Stop on missing mandatory parsing capability. Report optional Office verification limitations before processing.
 4. Run `python scripts/deslop.py ingest <request.json> --out <semantic-packet.json>` to extract stable, hash-bound text blocks.
-5. Review **every eligible block** in the packet. Read [semantic-review.md](references/semantic-review.md) and output `deslop-semantic/v1` JSON. Ask for each headline, bullet, paragraph, callout, caption, and table cell:
+5. Review the complete slide, page, message, or section before judging its individual blocks. Then review **every eligible block** in the packet. Read [semantic-review.md](references/semantic-review.md) and output `deslop-semantic/v1` JSON. Apply the standalone-meaning gate: a reader who has not heard the presenter must be able to identify the subject, claim, decision, evidence, or action from the visible context. Ask for each headline, bullet, paragraph, callout, caption, and table cell:
    - What does it mean?
    - What new information does it add here?
    - Does it provide a fact, reason, mechanism, evidence, action, decision, qualification, or necessary transition?
    - Is it relevant to the communication job?
    - Could the same wording fit three unrelated subjects?
-   Mark meaningless, duplicate, buzzword-only, unsupported, or universal-fit blocks `needs-improvement`. Classify page numbers, footers, legal boilerplate, and decorative labels as exempt with a reason. Never leave an eligible block unassessed.
+   - Does it rely on an undefined referent, metaphor, category label, or presenter-only context?
+   Mark meaningless, duplicate, buzzword-only, unsupported, universal-fit, or context-dependent blocks `needs-improvement`. If a slide or page lacks a coherent standalone proposition, bind the finding to its headline or highest-level substantive block. Classify page numbers, footers, legal boilerplate, and decorative labels as exempt with a reason. Never leave an eligible block unassessed.
 6. For office files, read [format-safety.md](references/format-safety.md). Refuse edits crossing unsupported formatting, fields, citations, hyperlinks, equations, SmartArt, or stale source hashes. Never overwrite the source, shrink fonts, move objects, or restyle a file to make text fit.
 7. Run `python scripts/deslop.py request <request.json> --semantic-findings <semantic.json> --out <run-dir>`. The guarded command owns validation, deterministic audit, semantic merge, conservative rewrite planning, safe-copy application, integrity checks, reporting, and atomic publication.
 8. Run `python scripts/deslop.py request-verify <run-dir> --out <verification.json>`. Do not claim a revised artifact is qualified unless the independent verifier passes.
