@@ -1,0 +1,6 @@
+interface:
+  display_name: "DeSlopAI"
+  short_description: "Audit and remove vague, formulaic AI slop"
+  default_prompt: "Use $deslop-ai to audit this document and produce a conservative, source-faithful revised copy."
+policy:
+  allow_implicit_invocation: true

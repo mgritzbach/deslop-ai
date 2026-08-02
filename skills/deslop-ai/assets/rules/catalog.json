@@ -1,0 +1,1744 @@
+{
+  "schemaVersion": "deslop-catalog/v1",
+  "version": "0.1.0",
+  "lexicon": {
+    "version": "0.1.0",
+    "updated": "2026-08-02",
+    "language": "en",
+    "purpose": "Candidate retrieval for editorial review. Terms are not forbidden words and must never be converted directly into an AI-authorship probability.",
+    "scoring_guidance": {
+      "first_isolated_match": 0,
+      "prefer_density": true,
+      "prefer_cross_family_clusters": true,
+      "repeated_lemma_window_words": 250,
+      "exploratory_review_threshold": "3 matches from 2+ families per 100 words"
+    },
+    "evidence_labels": {
+      "A": "artifact_or_directly_verifiable",
+      "B": "measured_corpus_marker",
+      "C": "repeated_field_observation",
+      "D": "established_editorial_issue",
+      "E": "interpretive_heuristic"
+    },
+    "groups": [
+      {
+        "id": "LEX_ASSISTANT_PREAMBLE",
+        "label": "Chatty assistant preamble",
+        "evidence": "C",
+        "default_weight": 1,
+        "match_type": "phrase_ci",
+        "terms": [
+          "certainly!",
+          "absolutely!",
+          "of course!",
+          "great question",
+          "I would be happy to",
+          "I'd be happy to",
+          "let's dive in",
+          "let's break it down",
+          "here's a breakdown",
+          "here's the thing",
+          "at its core",
+          "in simple terms",
+          "the short answer is"
+        ],
+        "notes": "Flag as leakage in finished artifacts; may be natural in live chat."
+      },
+      {
+        "id": "LEX_ASSISTANT_CLOSER",
+        "label": "Chatty assistant closer",
+        "evidence": "C",
+        "default_weight": 1,
+        "match_type": "phrase_ci",
+        "terms": [
+          "I hope this helps",
+          "let me know if you would like",
+          "let me know if you'd like",
+          "feel free to reach out",
+          "please do not hesitate to",
+          "please don't hesitate to",
+          "would you like me to",
+          "is there anything else",
+          "happy to help further",
+          "more detailed breakdown"
+        ],
+        "notes": "Often a menu-response residue outside chat."
+      },
+      {
+        "id": "LEX_SCENE_SETTER",
+        "label": "Generic scene setter",
+        "evidence": "C",
+        "default_weight": 1,
+        "match_type": "phrase_ci",
+        "terms": [
+          "in today's fast-paced world",
+          "in today's digital age",
+          "in an increasingly complex world",
+          "in an era defined by",
+          "as the world continues to evolve",
+          "as we navigate",
+          "in the modern landscape",
+          "when it comes to",
+          "there is no denying that",
+          "the fact of the matter is",
+          "needless to say",
+          "in this day and age"
+        ],
+        "action": "cut_or_replace_with_actual_problem"
+      },
+      {
+        "id": "LEX_DIDACTIC_DISCLAIMER",
+        "label": "Didactic disclaimer",
+        "evidence": "C",
+        "default_weight": 1,
+        "match_type": "phrase_ci",
+        "terms": [
+          "it is important to note",
+          "it's important to note",
+          "it is crucial to note",
+          "it is critical to remember",
+          "it's worth noting",
+          "it is worth considering",
+          "keep in mind that",
+          "results may vary"
+        ],
+        "exceptions": "Necessary safety, legal, jurisdictional, or methodological qualification."
+      },
+      {
+        "id": "LEX_TRANSITION_FORMAL",
+        "label": "Mechanical formal transition",
+        "evidence": "B",
+        "default_weight": 0.5,
+        "match_type": "sentence_initial_word_ci",
+        "terms": [
+          "additionally",
+          "moreover",
+          "furthermore",
+          "notably",
+          "importantly",
+          "crucially",
+          "interestingly",
+          "consequently",
+          "conversely",
+          "nevertheless",
+          "overall",
+          "ultimately",
+          "particularly"
+        ],
+        "notes": "Stronger when several consecutive paragraphs begin this way."
+      },
+      {
+        "id": "LEX_TRANSITION_PHRASE",
+        "label": "Mechanical transition phrase",
+        "evidence": "C",
+        "default_weight": 0.5,
+        "match_type": "sentence_initial_phrase_ci",
+        "terms": [
+          "that said",
+          "with that in mind",
+          "against this backdrop",
+          "building on this",
+          "on the other hand",
+          "in this context",
+          "in essence",
+          "moving forward",
+          "looking ahead",
+          "in conclusion",
+          "in summary"
+        ]
+      },
+      {
+        "id": "LEX_SIGNIFICANCE",
+        "label": "Inflated significance",
+        "evidence": "C",
+        "default_weight": 1.5,
+        "match_type": "phrase_or_template_ci",
+        "terms": [
+          "plays a crucial role",
+          "plays a pivotal role",
+          "plays a vital role",
+          "plays a key role",
+          "serves as a testament to",
+          "stands as a testament to",
+          "serves as a reminder of",
+          "underscores the importance of",
+          "highlights the significance of",
+          "reflects broader trends",
+          "marks a significant milestone",
+          "represents a turning point",
+          "sets the stage for",
+          "paves the way for",
+          "lays the groundwork for",
+          "leaves an indelible mark",
+          "far-reaching implications",
+          "profound impact",
+          "enduring legacy",
+          "cannot be overstated",
+          "shaping the future of",
+          "positioned at the forefront",
+          "stands as a beacon",
+          "continues to captivate",
+          "continues to inspire",
+          "solidifies its status"
+        ],
+        "action": "demand_consequence_scale_comparison_or_source"
+      },
+      {
+        "id": "LEX_ABSTRACT_DOMAIN",
+        "label": "Abstract domain noun",
+        "evidence": "C",
+        "default_weight": 0.5,
+        "match_type": "lemma_ci",
+        "terms": [
+          "landscape",
+          "ecosystem",
+          "realm",
+          "space",
+          "tapestry",
+          "fabric",
+          "mosaic",
+          "symphony",
+          "dance",
+          "interplay",
+          "intersection",
+          "nexus",
+          "paradigm",
+          "journey",
+          "evolution",
+          "continuum",
+          "spectrum",
+          "frontier",
+          "avenue",
+          "pathway",
+          "lens",
+          "dimension",
+          "pillar",
+          "cornerstone",
+          "foundation",
+          "framework",
+          "labyrinth",
+          "narrative"
+        ],
+        "exceptions": "Literal or defined domain use."
+      },
+      {
+        "id": "LEX_CONSULTANT_ADJECTIVE",
+        "label": "Consultant/product adjective",
+        "evidence": "D",
+        "default_weight": 0.5,
+        "match_type": "lemma_ci",
+        "terms": [
+          "robust",
+          "seamless",
+          "holistic",
+          "dynamic",
+          "comprehensive",
+          "innovative",
+          "transformative",
+          "cutting-edge",
+          "groundbreaking",
+          "game-changing",
+          "impactful",
+          "actionable",
+          "scalable",
+          "future-proof",
+          "next-generation",
+          "strategic",
+          "optimized",
+          "enhanced",
+          "meaningful",
+          "valuable",
+          "powerful",
+          "sophisticated",
+          "versatile",
+          "intuitive",
+          "streamlined",
+          "mission-critical",
+          "best-in-class",
+          "world-class",
+          "unique",
+          "unparalleled",
+          "multifaceted",
+          "nuanced",
+          "intricate",
+          "meticulous",
+          "vibrant"
+        ],
+        "action": "require_defined_criterion_or_metric"
+      },
+      {
+        "id": "LEX_CONSULTANT_VERB",
+        "label": "Consultant/product verb",
+        "evidence": "D",
+        "default_weight": 0.5,
+        "match_type": "lemma_ci",
+        "terms": [
+          "leverage",
+          "utilize",
+          "harness",
+          "unlock",
+          "empower",
+          "enable",
+          "elevate",
+          "foster",
+          "cultivate",
+          "facilitate",
+          "streamline",
+          "optimize",
+          "enhance",
+          "transform",
+          "revolutionize",
+          "redefine",
+          "reshape",
+          "navigate",
+          "delve",
+          "unpack",
+          "illuminate",
+          "underscore",
+          "showcase",
+          "encompass",
+          "embody",
+          "resonate",
+          "align",
+          "bridge",
+          "spearhead",
+          "propel",
+          "drive",
+          "supercharge",
+          "amplify",
+          "operationalize"
+        ],
+        "action": "name_actor_mechanism_and_outcome"
+      },
+      {
+        "id": "LEX_COPULA_SUBSTITUTE",
+        "label": "Decorative copula substitute",
+        "evidence": "C",
+        "default_weight": 0.5,
+        "match_type": "phrase_ci",
+        "terms": [
+          "serves as",
+          "stands as",
+          "functions as",
+          "operates as",
+          "acts as",
+          "holds the distinction of",
+          "is characterized by",
+          "boasts a",
+          "features a",
+          "maintains a"
+        ],
+        "action": "test_is_or_has"
+      },
+      {
+        "id": "LEX_PROMOTIONAL",
+        "label": "Promotional or travel-copy language",
+        "evidence": "C",
+        "default_weight": 1,
+        "match_type": "phrase_or_lemma_ci",
+        "terms": [
+          "nestled in",
+          "in the heart of",
+          "rich cultural heritage",
+          "natural beauty",
+          "renowned for",
+          "vibrant community",
+          "diverse array",
+          "breathtaking",
+          "stunning",
+          "premier destination",
+          "hidden gem",
+          "must-visit",
+          "iconic",
+          "state-of-the-art",
+          "commitment to excellence",
+          "exemplifies",
+          "showcasing",
+          "featuring"
+        ]
+      },
+      {
+        "id": "LEX_VAGUE_AUTHORITY",
+        "label": "Vague authority",
+        "evidence": "D",
+        "default_weight": 2,
+        "match_type": "phrase_ci",
+        "terms": [
+          "research suggests",
+          "studies show",
+          "experts agree",
+          "experts argue",
+          "observers note",
+          "critics say",
+          "industry reports",
+          "industry leaders",
+          "many believe",
+          "some argue",
+          "it is widely recognized",
+          "a growing body of evidence",
+          "according to multiple sources",
+          "several publications",
+          "stakeholders have highlighted",
+          "has been praised for",
+          "is often considered",
+          "is generally regarded"
+        ],
+        "action": "name_and_verify_source"
+      },
+      {
+        "id": "LEX_ANALYTICAL_GLUE",
+        "label": "Generic analytical glue",
+        "evidence": "C",
+        "default_weight": 0.75,
+        "match_type": "lemma_or_phrase_ci",
+        "terms": [
+          "highlighting",
+          "underscoring",
+          "emphasizing",
+          "reflecting",
+          "symbolizing",
+          "ensuring",
+          "contributing",
+          "cultivating",
+          "fostering",
+          "encompassing",
+          "enhancing",
+          "demonstrating",
+          "illustrating",
+          "reinforcing",
+          "signaling",
+          "suggesting",
+          "revealing",
+          "valuable insights",
+          "aligns with",
+          "resonates with",
+          "speaks to",
+          "points to",
+          "sheds light on"
+        ],
+        "notes": "Stronger as a comma-final participial tail."
+      },
+      {
+        "id": "LEX_FAKE_COMPLETENESS",
+        "label": "Fake comprehensiveness",
+        "evidence": "D",
+        "default_weight": 0.75,
+        "match_type": "phrase_ci",
+        "terms": [
+          "key considerations include",
+          "several factors",
+          "a range of",
+          "a wide range of",
+          "a diverse array of",
+          "various aspects",
+          "multiple dimensions",
+          "complex and nuanced",
+          "comprehensive overview",
+          "covering everything from",
+          "among others",
+          "and beyond",
+          "and much more",
+          "the following key areas",
+          "three key pillars",
+          "all facets of",
+          "end-to-end",
+          "360-degree"
+        ]
+      },
+      {
+        "id": "LEX_GENERIC_BALANCE",
+        "label": "Generic balance/challenge language",
+        "evidence": "C",
+        "default_weight": 1,
+        "match_type": "phrase_ci",
+        "terms": [
+          "presents both opportunities and challenges",
+          "despite its many benefits",
+          "faces several challenges",
+          "not without its challenges",
+          "potential limitations",
+          "careful consideration",
+          "weigh the pros and cons",
+          "strike a balance",
+          "balance innovation with responsibility",
+          "ethical considerations",
+          "responsible implementation",
+          "ongoing dialogue",
+          "continued collaboration",
+          "a nuanced approach"
+        ]
+      },
+      {
+        "id": "LEX_UPBEAT_CLOSURE",
+        "label": "Generic upbeat closure",
+        "evidence": "C",
+        "default_weight": 1,
+        "match_type": "phrase_ci",
+        "terms": [
+          "the future remains bright",
+          "the road ahead",
+          "path forward",
+          "promising future",
+          "poised for growth",
+          "continued success",
+          "by embracing",
+          "together we can",
+          "more inclusive and sustainable future",
+          "lasting impact",
+          "only time will tell",
+          "the possibilities are endless",
+          "usher in a new era",
+          "for generations to come"
+        ]
+      },
+      {
+        "id": "LEX_SYNTHETIC_EMPATHY",
+        "label": "Generic emotional mirroring",
+        "evidence": "E",
+        "default_weight": 0.5,
+        "match_type": "phrase_ci",
+        "terms": [
+          "I understand how frustrating this must be",
+          "that's completely understandable",
+          "your concern is valid",
+          "thank you for sharing",
+          "I appreciate your perspective",
+          "you're absolutely right",
+          "I hear you",
+          "that sounds incredibly difficult",
+          "I'm sorry you're dealing with this",
+          "happy to help",
+          "I'm glad you asked"
+        ],
+        "exceptions": "Genuine, context-matched interpersonal communication."
+      },
+      {
+        "id": "LEX_MODEL_DISCLAIMER",
+        "label": "Model/knowledge disclaimer",
+        "evidence": "A",
+        "default_weight": 4,
+        "match_type": "phrase_ci",
+        "terms": [
+          "as an AI language model",
+          "as a large language model",
+          "I don't have access to real-time information",
+          "up to my last training update",
+          "as of my knowledge cutoff",
+          "based on the information available",
+          "specific details are limited",
+          "not widely documented"
+        ],
+        "notes": "Direct tool residue in a finished artifact; ordinary caveat in chatbot transcript."
+      },
+      {
+        "id": "LEX_SOCIAL_ANNOUNCEMENT",
+        "label": "Canned social announcement",
+        "evidence": "C",
+        "default_weight": 0.75,
+        "match_type": "phrase_ci",
+        "terms": [
+          "I'm thrilled to announce",
+          "I'm excited to share",
+          "I'm humbled to",
+          "I'm honored to",
+          "what a journey",
+          "here are five lessons",
+          "but here's the thing",
+          "let that sink in",
+          "read that again",
+          "this changed everything",
+          "the takeaway?",
+          "the lesson?",
+          "agree?",
+          "thoughts?",
+          "who else needs to hear this?",
+          "the future belongs to",
+          "I couldn't be prouder",
+          "onwards and upwards"
+        ]
+      },
+      {
+        "id": "LEX_ACADEMIC_BOILERPLATE",
+        "label": "Academic boilerplate",
+        "evidence": "B",
+        "default_weight": 0.75,
+        "match_type": "phrase_ci",
+        "terms": [
+          "this study aims to",
+          "addresses a gap in the literature",
+          "provides novel insights",
+          "offers a comprehensive understanding",
+          "findings underscore",
+          "intricate interplay",
+          "pivotal role",
+          "multifaceted nature",
+          "in the context of",
+          "has important implications for",
+          "sheds light on",
+          "further research is needed",
+          "warrants further investigation",
+          "contributes to the growing body of literature"
+        ],
+        "exceptions": "Conventional phrasing may be required; review contribution specificity."
+      },
+      {
+        "id": "LEX_TECH_BOILERPLATE",
+        "label": "Technical/code boilerplate claim",
+        "evidence": "D",
+        "default_weight": 1,
+        "match_type": "phrase_ci",
+        "terms": [
+          "robust solution",
+          "seamless integration",
+          "comprehensive implementation",
+          "enhance maintainability",
+          "ensure reliability and scalability",
+          "production-ready",
+          "clean and efficient",
+          "following best practices",
+          "handles edge cases",
+          "future-proof architecture",
+          "without compromising performance",
+          "improves developer experience",
+          "modular and extensible",
+          "single source of truth"
+        ],
+        "action": "demand_test_contract_metric_or_specific_change"
+      },
+      {
+        "id": "LEX_CREATIVE_CLICHE",
+        "label": "Creative-prose default",
+        "evidence": "D",
+        "default_weight": 0.5,
+        "match_type": "phrase_ci",
+        "terms": [
+          "eyes widened",
+          "gaze lingered",
+          "breath hitched",
+          "heart pounded",
+          "a shiver ran down",
+          "the air crackled",
+          "tension was palpable",
+          "silence stretched",
+          "for a long moment",
+          "a beat passed",
+          "time seemed to stop",
+          "voice barely above a whisper",
+          "a ghost of a smile",
+          "little did they know",
+          "unbeknownst to",
+          "something shifted",
+          "the weight of",
+          "couldn't help but",
+          "found themselves"
+        ],
+        "notes": "Longstanding human clichés; use repetition and scene specificity, never authorship inference."
+      },
+      {
+        "id": "LEX_JUZEK_WARD_21",
+        "label": "Juzek and Ward PubMed focal forms",
+        "evidence": "B",
+        "default_weight": 0.75,
+        "match_type": "exact_word_ci",
+        "terms": [
+          "delves",
+          "delved",
+          "delving",
+          "showcasing",
+          "delve",
+          "boasts",
+          "underscores",
+          "comprehending",
+          "intricacies",
+          "surpassing",
+          "intricate",
+          "underscoring",
+          "garnered",
+          "showcases",
+          "emphasizing",
+          "underscore",
+          "realm",
+          "surpasses",
+          "groundbreaking",
+          "advancements",
+          "aligns"
+        ],
+        "source": "https://arxiv.org/html/2412.11385#A",
+        "exceptions": "Evidence is specific to scientific abstracts and studied model/time period."
+      }
+    ],
+    "collocations": [
+      {
+        "id": "COL_INTRICATE_ABSTRACTION",
+        "evidence": "C",
+        "left": [
+          "intricate",
+          "complex",
+          "nuanced"
+        ],
+        "right": [
+          "tapestry",
+          "interplay",
+          "web",
+          "dance",
+          "relationship",
+          "dynamics",
+          "intricacies"
+        ]
+      },
+      {
+        "id": "COL_EVOLVING_LANDSCAPE",
+        "evidence": "C",
+        "left": [
+          "ever-evolving",
+          "evolving",
+          "rapidly-changing",
+          "dynamic"
+        ],
+        "right": [
+          "landscape",
+          "world",
+          "realm",
+          "ecosystem",
+          "environment"
+        ]
+      },
+      {
+        "id": "COL_DELVE_COMPLEXITY",
+        "evidence": "B",
+        "left": [
+          "delve",
+          "delves",
+          "delving"
+        ],
+        "bridge": [
+          "into",
+          "deeper_into"
+        ],
+        "right": [
+          "complexities",
+          "intricacies",
+          "nuances",
+          "depths",
+          "realm"
+        ]
+      },
+      {
+        "id": "COL_UNLOCK_POTENTIAL",
+        "evidence": "D",
+        "left": [
+          "unlock",
+          "harness",
+          "unleash"
+        ],
+        "right": [
+          "potential",
+          "power",
+          "value",
+          "insights",
+          "possibilities"
+        ]
+      },
+      {
+        "id": "COL_PAVE_FUTURE",
+        "evidence": "C",
+        "left": [
+          "pave the way",
+          "lay the groundwork",
+          "set the stage"
+        ],
+        "right": [
+          "future",
+          "innovation",
+          "growth",
+          "advancements",
+          "transformation"
+        ]
+      },
+      {
+        "id": "COL_INSIGHTS",
+        "evidence": "C",
+        "left": [
+          "valuable",
+          "actionable",
+          "meaningful",
+          "deeper",
+          "novel",
+          "key"
+        ],
+        "right": [
+          "insight",
+          "insights"
+        ]
+      },
+      {
+        "id": "COL_ROBUST_NOUN",
+        "evidence": "D",
+        "left": [
+          "robust",
+          "comprehensive",
+          "holistic"
+        ],
+        "right": [
+          "framework",
+          "solution",
+          "strategy",
+          "approach",
+          "system",
+          "methodology"
+        ]
+      },
+      {
+        "id": "COL_SEAMLESS_NOUN",
+        "evidence": "D",
+        "left": [
+          "seamless",
+          "frictionless",
+          "effortless"
+        ],
+        "right": [
+          "integration",
+          "experience",
+          "transition",
+          "workflow",
+          "connectivity"
+        ]
+      },
+      {
+        "id": "COL_FOSTER_ABSTRACTION",
+        "evidence": "D",
+        "left": [
+          "foster",
+          "cultivate",
+          "drive",
+          "enable"
+        ],
+        "right": [
+          "innovation",
+          "collaboration",
+          "growth",
+          "engagement",
+          "culture",
+          "success"
+        ]
+      },
+      {
+        "id": "COL_COMMITMENT_VIRTUE",
+        "evidence": "C",
+        "left": [
+          "commitment",
+          "dedication"
+        ],
+        "right": [
+          "excellence",
+          "innovation",
+          "sustainability",
+          "quality",
+          "community"
+        ]
+      },
+      {
+        "id": "COL_UNDERSCORE_IMPORTANCE",
+        "evidence": "B",
+        "left": [
+          "underscore",
+          "underscores",
+          "highlight",
+          "highlights",
+          "emphasize",
+          "emphasizes"
+        ],
+        "right": [
+          "importance",
+          "need",
+          "significance",
+          "role",
+          "value"
+        ]
+      },
+      {
+        "id": "COL_TESTAMENT_VIRTUE",
+        "evidence": "C",
+        "left": [
+          "testament",
+          "reminder"
+        ],
+        "right": [
+          "resilience",
+          "dedication",
+          "commitment",
+          "innovation",
+          "spirit",
+          "legacy"
+        ]
+      },
+      {
+        "id": "COL_POISED_CHANGE",
+        "evidence": "C",
+        "left": [
+          "poised",
+          "positioned",
+          "set"
+        ],
+        "right": [
+          "transform",
+          "revolutionize",
+          "reshape",
+          "redefine",
+          "lead",
+          "grow"
+        ]
+      },
+      {
+        "id": "COL_NAVIGATE_ABSTRACTION",
+        "evidence": "C",
+        "left": [
+          "navigate",
+          "address",
+          "tackle"
+        ],
+        "right": [
+          "complexities",
+          "challenges",
+          "landscape",
+          "uncertainty",
+          "future"
+        ]
+      },
+      {
+        "id": "COL_RICH_ABSTRACTION",
+        "evidence": "C",
+        "left": [
+          "rich",
+          "vibrant",
+          "diverse"
+        ],
+        "right": [
+          "tapestry",
+          "heritage",
+          "history",
+          "culture",
+          "ecosystem",
+          "community"
+        ]
+      }
+    ]
+  },
+  "structures": {
+    "version": "0.1.0",
+    "updated": "2026-08-02",
+    "language": "en",
+    "purpose": "Candidate retrieval for formulaic structures; semantic review is mandatory.",
+    "global_controls": {
+      "ignore_quoted_text": "configurable",
+      "ignore_code": true,
+      "cap_same_family_score": true,
+      "require_density_for_escalation": true,
+      "prefer_cross_family_cluster": true
+    },
+    "rules": [
+      {
+        "id": "STR_NOT_JUST_BUT",
+        "label": "Not just X but also Y",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bnot\\s+(?:just|only|merely|simply)\\b[^.!?]{1,160}\\bbut(?:\\s+also)?\\b",
+          "\\bmore\\s+than\\s+(?:just|merely)\\b",
+          "\\bgo(?:es)?\\s+beyond\\b[^.!?]{1,120}\\bto\\b"
+        ],
+        "review": "Is X a real misconception, and is Y more precise rather than grander?"
+      },
+      {
+        "id": "STR_NOT_X_BUT_Y",
+        "label": "Not X but Y identity correction",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\b(?:it|this|that|the\\s+\\w+)\\s+(?:is|was|isn't|wasn't|is\\s+not|was\\s+not)\\b[^.!?]{1,120}[—;,.]\\s*(?:it\\s+)?(?:is|was|it's)\\b",
+          "\\bnot\\b[^,;.!?]{1,100}\\bbut\\b",
+          "\\bnot\\s+because\\b[^,;.!?]{1,120}\\bbut\\s+because\\b"
+        ],
+        "review": "Flag repetition or invented contrast, not legitimate correction."
+      },
+      {
+        "id": "STR_LESS_MORE",
+        "label": "Less about X more about Y",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bless\\s+about\\b[^.!?]{1,120}\\bmore\\s+about\\b",
+          "\\brather\\s+than\\s+(?:merely|simply|just)\\b",
+          "\\binstead\\s+of\\s+(?:merely|simply|just)\\b"
+        ]
+      },
+      {
+        "id": "STR_CONCESSION_SANDWICH",
+        "label": "Repeated concession and balancing",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "discourse_sequence",
+        "openers": [
+          "although",
+          "while",
+          "despite",
+          "notwithstanding"
+        ],
+        "pivots": [
+          "however",
+          "nevertheless",
+          "that said",
+          "on the other hand"
+        ],
+        "window_sentences": 2,
+        "review": "Verify actual tension and avoid automatic middle-position prose."
+      },
+      {
+        "id": "STR_CHALLENGE_OPTIMISM",
+        "label": "Challenges to optimism conclusion",
+        "evidence": "C",
+        "severity": "medium",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bdespite\\s+(?:these|the)\\s+challenges\\b",
+          "\\bfaces?\\s+(?:several|numerous|significant)\\s+challenges\\b",
+          "\\bchallenges?\\s+and\\s+(?:opportunities|future\\s+(?:directions|prospects|outlook))\\b"
+        ],
+        "review": "Require a plan, owner, dependency, forecast, or honest unresolved risk."
+      },
+      {
+        "id": "STR_EM_DASH_PIVOT",
+        "label": "Em-dash reveal/pivot",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "regex",
+        "patterns": [
+          "—\\s*(?:it's|it is|not|a|an|the)\\b",
+          "\\b(?:result|challenge|lesson|takeaway)\\?\\s*[^.!?]{0,100}—"
+        ],
+        "density_unit_words": 1000,
+        "review": "Em dashes are legitimate; evaluate repeated rhetorical function and baseline."
+      },
+      {
+        "id": "STR_TRIPLET_ADJECTIVES",
+        "label": "Three coordinated adjectives",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "pos_sequence",
+        "sequence": [
+          "ADJ",
+          "comma",
+          "ADJ",
+          "optional_comma",
+          "and_or_ampersand",
+          "ADJ"
+        ],
+        "review": "Check overlap, padding, and repeated triplet cadence."
+      },
+      {
+        "id": "STR_TRIPLET_PHRASES",
+        "label": "Three coordinated parallel phrases",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "dependency_parallelism",
+        "count": 3,
+        "review": "Confirm the three items are distinct and genuinely exhaustive/useful."
+      },
+      {
+        "id": "STR_RANGE_FROM_TO",
+        "label": "Exhaustive-looking from X to Y",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bfrom\\b[^.!?]{1,120}\\bto\\b",
+          "\\beverything\\s+from\\b[^.!?]{1,120}\\bto\\b"
+        ],
+        "review": "Are X and Y endpoints on one meaningful dimension?"
+      },
+      {
+        "id": "STR_BOLD_LABEL_BULLETS",
+        "label": "Bold-label bullet factory",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "line_regex",
+        "patterns": [
+          "^\\s*[-*+]\\s+\\*\\*[^*\\n]{1,60}\\*\\*\\s*:\\s+",
+          "^\\s*[-*+]\\s+__[^\\n_]{1,60}__\\s*:\\s+"
+        ],
+        "density": "3+ in one section",
+        "review": "Prefer a paragraph or real comparison table if labels add no hierarchy."
+      },
+      {
+        "id": "STR_NUMBER_FIRST",
+        "label": "Number determines analysis",
+        "evidence": "E",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bhere\\s+are\\s+(?:three|four|five|six|seven|eight|nine|ten|\\d+)\\b",
+          "\\bthere\\s+are\\s+(?:three|four|five|\\d+)\\s+key\\b",
+          "\\bconsists?\\s+of\\s+(?:three|four|\\d+)\\s+(?:key\\s+)?(?:layers|pillars|areas|elements)\\b"
+        ],
+        "review": "Validate taxonomy rather than treating list length as a defect."
+      },
+      {
+        "id": "STR_PARTICIPIAL_TAIL",
+        "label": "Comma-final participial analysis",
+        "evidence": "C",
+        "severity": "medium",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          ",\\s*(?:highlighting|underscoring|emphasizing|reflecting|symbolizing|ensuring|demonstrating|illustrating|reinforcing|signaling|suggesting|revealing|contributing\\s+to|fostering|enhancing)\\b[^.!?]{0,180}[.!?]"
+        ],
+        "review": "Check modifier attachment, entailment, attribution, and information gain."
+      },
+      {
+        "id": "STR_COPULA_AVOIDANCE",
+        "label": "Decorative copula avoidance",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\b(?:serves|stands|functions|operates|acts)\\s+as\\b",
+          "\\bholds\\s+the\\s+distinction\\s+of\\b",
+          "\\bboasts?\\b"
+        ],
+        "review": "Test replacement with is/has without loss."
+      },
+      {
+        "id": "STR_QA_FRAGMENT",
+        "label": "Rhetorical question with instant answer",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\b(?:the\\s+)?(?:result|challenge|lesson|takeaway|benefit|answer)\\?\\s+",
+          "\\bwhy\\s+does\\s+this\\s+matter\\?\\s+(?:because|it)\\b",
+          "\\bwhat\\s+sets\\s+[^?]+\\s+apart\\?\\s+"
+        ],
+        "review": "Check whether manufactured dialogue helps this medium."
+      },
+      {
+        "id": "STR_FRAGMENT_LADDER",
+        "label": "Short fragment ladder",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "sequence_metric",
+        "max_tokens_per_sentence": 6,
+        "minimum_consecutive": 3,
+        "stronger_if_blank_line_separated": true
+      },
+      {
+        "id": "STR_NEGATION_LADDER",
+        "label": "No X no Y just Z",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bno\\b[^.!?]{1,50}[.!]\\s*no\\b[^.!?]{1,50}[.!]\\s*(?:no|just)\\b",
+          "\\bnot\\b[^.!?]{1,50}[.!]\\s*not\\b[^.!?]{1,50}[.!]\\s*just\\b",
+          "\\byou\\s+don't\\s+need\\b[^.!?]{1,100}[.!]\\s*you\\s+need\\b"
+        ]
+      },
+      {
+        "id": "STR_UNIVERSAL_AUDIENCE",
+        "label": "Conditional universality",
+        "evidence": "D",
+        "severity": "low",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bwhether\\s+you(?:'re|\\s+are)\\b[^.!?]{1,140}\\bor\\b",
+          "\\bno\\s+matter\\s+(?:your|what|where|who)\\b",
+          "\\bfor\\s+anyone\\s+looking\\s+to\\b"
+        ],
+        "review": "Check audience assumptions and scope."
+      },
+      {
+        "id": "STR_DEFINITION_REPACKAGING",
+        "label": "Definition by abstraction",
+        "evidence": "D",
+        "severity": "medium",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bat\\s+its\\s+core\\b",
+          "\\bfundamentally\\b[^.!?]{0,80}\\b(?:is|represents)\\b",
+          "\\bin\\s+essence\\b",
+          "\\bcan\\s+be\\s+understood\\s+as\\b"
+        ],
+        "review": "Require an operational definition or concrete property."
+      },
+      {
+        "id": "STR_EMPTY_CAUSAL",
+        "label": "Empty causal connector",
+        "evidence": "D",
+        "severity": "medium",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bthis\\s+(?:ensures|enables|allows|drives|facilitates)\\b",
+          "\\bas\\s+a\\s+result\\b",
+          "\\bthereby\\b",
+          "\\bin\\s+turn\\b"
+        ],
+        "review": "Identify mechanism, conditions, and strength of causal claim."
+      },
+      {
+        "id": "STR_ELEGANT_VARIATION",
+        "label": "Excessive renaming of one entity",
+        "evidence": "C",
+        "severity": "medium",
+        "pattern_type": "coreference_variation",
+        "example_aliases": [
+          "company",
+          "organization",
+          "platform",
+          "solution",
+          "offering",
+          "initiative"
+        ],
+        "review": "Prefer precise repetition when aliases create ambiguity or semantic drift."
+      },
+      {
+        "id": "STR_PREMISE_ECHO",
+        "label": "Restatement as insight",
+        "evidence": "E",
+        "severity": "medium",
+        "pattern_type": "semantic_similarity",
+        "sentence_pair_similarity_min": "configurable",
+        "second_sentence_markers": [
+          "highlights",
+          "underscores",
+          "demonstrates",
+          "reflects",
+          "illustrates"
+        ],
+        "review": "Does sentence two add evidence or merely praise/relabel sentence one?"
+      },
+      {
+        "id": "STR_REPEATED_OPENER",
+        "label": "Repeated sentence/paragraph opener",
+        "evidence": "D",
+        "severity": "low",
+        "pattern_type": "ngram_repetition",
+        "ngram_tokens": [
+          1,
+          2,
+          3
+        ],
+        "window_sentences": 8,
+        "review_threshold": 3
+      },
+      {
+        "id": "STR_BY_GERUND_PRESCRIPTION",
+        "label": "By doing X we can Y",
+        "evidence": "C",
+        "severity": "medium",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bby\\s+\\w+ing\\b[^.!?]{1,180}\\b(?:can|will|helps?|enables?)\\b",
+          "\\bthrough\\s+(?:continued|ongoing)\\s+(?:collaboration|innovation|dialogue)\\b",
+          "\\bwith\\s+the\\s+right\\s+approach\\b"
+        ],
+        "review": "Replace virtues with owner, steps, resources, and constraints."
+      },
+      {
+        "id": "STR_CANNED_CITATION_WRAPPER",
+        "label": "Source plus synthetic interpretation",
+        "evidence": "C",
+        "severity": "high",
+        "pattern_type": "clause_entailment_review",
+        "patterns": [
+          "\\baccording\\s+to\\b",
+          "\\bas\\s+reported\\s+by\\b",
+          "\\bresearch\\s+has\\s+shown\\s+that\\b"
+        ],
+        "tail_markers": [
+          "highlighting",
+          "underscoring",
+          "demonstrating",
+          "reflecting",
+          "proving"
+        ],
+        "review": "Verify source support for every clause, especially the interpretive tail."
+      },
+      {
+        "id": "DOC_GENERIC_EXPLAINER_ARC",
+        "label": "Context-definition-benefits-challenges-future arc",
+        "evidence": "E",
+        "severity": "medium",
+        "pattern_type": "section_sequence",
+        "sequence_fuzzy": [
+          [
+            "introduction",
+            "overview",
+            "background"
+          ],
+          [
+            "definition",
+            "what_it_is"
+          ],
+          [
+            "benefits",
+            "advantages",
+            "importance"
+          ],
+          [
+            "challenges",
+            "limitations",
+            "considerations"
+          ],
+          [
+            "future",
+            "conclusion",
+            "road_ahead"
+          ]
+        ],
+        "review": "Does the arc answer the request or merely appear comprehensive?"
+      },
+      {
+        "id": "DOC_RECURSIVE_SUMMARY",
+        "label": "Recursive overview/bullets/takeaway duplication",
+        "evidence": "D",
+        "severity": "medium",
+        "pattern_type": "cross_section_semantic_similarity",
+        "compare": [
+          "overview_to_body",
+          "body_to_section_close",
+          "section_closes_to_conclusion"
+        ]
+      },
+      {
+        "id": "DOC_PERFECT_SYMMETRY",
+        "label": "Perfect section symmetry",
+        "evidence": "E",
+        "severity": "low",
+        "pattern_type": "layout_distribution",
+        "features": [
+          "section_length",
+          "bullet_count",
+          "sentence_pattern",
+          "card_count"
+        ],
+        "review": "Real information need not be evenly distributed."
+      },
+      {
+        "id": "DOC_ABSTRACTION_STAIRCASE",
+        "label": "Fact to societal significance to hopeful future",
+        "evidence": "E",
+        "severity": "high",
+        "pattern_type": "semantic_sequence",
+        "stages": [
+          "local_fact",
+          "generic_implication",
+          "broad_significance",
+          "optimistic_future"
+        ]
+      },
+      {
+        "id": "DOC_CANNED_INTRO",
+        "label": "Canned introduction",
+        "evidence": "C",
+        "severity": "medium",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bin\\s+today's\\b[^.!?]{1,100}\\blandscape\\b",
+          "\\bhas\\s+become\\s+increasingly\\s+important\\b",
+          "\\bthis\\s+(?:article|guide|post|section)\\s+will\\s+(?:delve|explore|examine)\\b"
+        ]
+      },
+      {
+        "id": "DOC_CANNED_CONCLUSION",
+        "label": "Canned optimistic conclusion",
+        "evidence": "C",
+        "severity": "medium",
+        "pattern_type": "cluster",
+        "required_any": [
+          "in conclusion",
+          "while challenges remain",
+          "by embracing",
+          "the future",
+          "moving forward"
+        ],
+        "minimum_matches": 2
+      },
+      {
+        "id": "DOC_MENU_RESPONSE",
+        "label": "Optional-deliverables menu ending",
+        "evidence": "C",
+        "severity": "low",
+        "pattern_type": "document_end_phrase_ci",
+        "terms": [
+          "I can also create",
+          "would you like me to",
+          "let me know if you would like",
+          "happy to provide"
+        ],
+        "exceptions": "Appropriate in interactive chat."
+      }
+    ]
+  },
+  "artifacts": {
+    "version": "0.1.0",
+    "updated": "2026-08-02",
+    "language": "multi",
+    "purpose": "High-confidence retrieval of unfinished tool residue and objectively checkable defects.",
+    "rules": [
+      {
+        "id": "ART_OPENAI_CITATION_TOKEN",
+        "label": "OpenAI-style internal citation token",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bcontentReference\\b",
+          "\\boaicite\\b",
+          "\\boai_citation\\b",
+          "\\bturn\\d+(?:search|view|fetch|open|news|reddit|academia)\\d+\\b",
+          "\\battributableIndex\\b"
+        ]
+      },
+      {
+        "id": "ART_GEMINI_CITATION_TOKEN",
+        "label": "Gemini-style internal citation token",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\[cite:\\s*\\d+(?:\\s*,\\s*\\d+)*\\]",
+          "\\[span_\\d+\\]\\(start_span\\)",
+          "\\(end_span\\)"
+        ]
+      },
+      {
+        "id": "ART_GROK_TOKEN",
+        "label": "Grok-style internal card token",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\bgrok_card\\b",
+          "\\bgrok_render_citation_card_json\\b"
+        ]
+      },
+      {
+        "id": "ART_PERPLEXITY_TOKEN",
+        "label": "Perplexity-style file token",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\battached_file\\b",
+          "\\bppl-ai-file-upload\\b"
+        ]
+      },
+      {
+        "id": "ART_WRITING_WRAPPER",
+        "label": "Internal writing wrapper",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          ":::writing",
+          ":::artifact"
+        ]
+      },
+      {
+        "id": "ART_ROLE_LABEL",
+        "label": "Prompt transcript role label",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "line_regex_ci",
+        "patterns": [
+          "^\\s*(?:SYSTEM|DEVELOPER|USER|ASSISTANT)\\s*:\\s+"
+        ],
+        "exceptions": "Intentional transcript, documentation, or test fixture."
+      },
+      {
+        "id": "ART_MODEL_REFUSAL",
+        "label": "Model identity/refusal leakage",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "phrase_ci",
+        "terms": [
+          "as an AI language model",
+          "as a large language model",
+          "I cannot comply with that request",
+          "I am sorry, but I cannot assist with that",
+          "up to my last training update",
+          "as of my knowledge cutoff"
+        ],
+        "exceptions": "Intentional quotation or chatbot transcript."
+      },
+      {
+        "id": "ART_RESPONSE_WRAPPER",
+        "label": "Chat response wrapper in finished artifact",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "phrase_ci",
+        "terms": [
+          "here is the revised version",
+          "sure, here is",
+          "I hope this helps",
+          "would you like me to"
+        ],
+        "context_required": "finished_nonchat_artifact"
+      },
+      {
+        "id": "ART_PROMPT_INSTRUCTION",
+        "label": "Likely prompt instruction leakage",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "phrase_ci",
+        "terms": [
+          "maintain a professional tone",
+          "do not mention",
+          "insert citation here",
+          "rewrite the following",
+          "output only the",
+          "follow these instructions",
+          "ignore previous instructions"
+        ],
+        "review": "Could be legitimate instructional content; inspect document purpose."
+      },
+      {
+        "id": "ART_PLACEHOLDER_SQUARE",
+        "label": "Square-bracket placeholder",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\[(?:company\\s+name|your\\s+name|insert[^\\]]*|date|link|source|statistic|citation|name|title)\\]"
+        ],
+        "exceptions": "Templates."
+      },
+      {
+        "id": "ART_PLACEHOLDER_ANGLE",
+        "label": "Angle/brace placeholder",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "<(?:NAME|DATE|COMPANY|LINK|SOURCE|TITLE)>",
+          "\\{\\{[^{}\\n]{1,80}\\}\\}",
+          "\\{(?:company|name|date|source|link|title)\\}"
+        ],
+        "exceptions": "Templates, code, and configuration."
+      },
+      {
+        "id": "ART_PLACEHOLDER_GENERIC",
+        "label": "Generic unfinished placeholder",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "\\b(?:TBD|TODO|TK)\\b",
+          "\\bXX(?:\\.\\d+)?%",
+          "\\blorem\\s+ipsum\\b",
+          "\\bexample\\.com\\b"
+        ],
+        "exceptions": "Test fixtures and templates."
+      },
+      {
+        "id": "ART_MARKDOWN_FENCE",
+        "label": "Markdown/code fence leakage",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "line_regex",
+        "patterns": [
+          "^\\s*\\x60{3}(?:markdown|wikitext|text|html|json|yaml)?\\s*$"
+        ],
+        "context_required": "non_markdown_medium"
+      },
+      {
+        "id": "ART_MARKDOWN_HEADING",
+        "label": "Literal Markdown heading",
+        "evidence": "A",
+        "severity": "medium",
+        "pattern_type": "line_regex",
+        "patterns": [
+          "^\\s*#{1,6}\\s+\\S"
+        ],
+        "context_required": "non_markdown_medium"
+      },
+      {
+        "id": "ART_MARKDOWN_BOLD",
+        "label": "Literal Markdown bold marker",
+        "evidence": "A",
+        "severity": "medium",
+        "pattern_type": "regex",
+        "patterns": [
+          "\\*\\*[^*\\n]{1,160}\\*\\*",
+          "__[^_\\n]{1,160}__"
+        ],
+        "context_required": "non_markdown_medium"
+      },
+      {
+        "id": "ART_MARKDOWN_LINK",
+        "label": "Literal Markdown link",
+        "evidence": "A",
+        "severity": "medium",
+        "pattern_type": "regex",
+        "patterns": [
+          "\\[[^\\]\\n]{1,160}\\]\\((?:https?://|/)[^)]+\\)"
+        ],
+        "context_required": "non_markdown_medium"
+      },
+      {
+        "id": "ART_UTM_GENERATOR",
+        "label": "Generator tracking parameter",
+        "evidence": "A",
+        "severity": "medium",
+        "pattern_type": "regex_ci",
+        "patterns": [
+          "[?&]utm_source=(?:chatgpt(?:\\.com)?|openai|perplexity|copilot)\\b"
+        ]
+      },
+      {
+        "id": "ART_ZERO_WIDTH",
+        "label": "Zero-width or directional control character",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "unicode_codepoint",
+        "codepoints": [
+          "U+00AD",
+          "U+200B",
+          "U+200C",
+          "U+200D",
+          "U+2060",
+          "U+FEFF",
+          "U+202A",
+          "U+202B",
+          "U+202C",
+          "U+202D",
+          "U+202E",
+          "U+2066",
+          "U+2067",
+          "U+2068",
+          "U+2069"
+        ],
+        "review": "Report exact location; copy/paste and multilingual text can introduce these legitimately."
+      },
+      {
+        "id": "ART_MIXED_SCRIPT_WORD",
+        "label": "Mixed-script homoglyph candidate",
+        "evidence": "A",
+        "severity": "medium",
+        "pattern_type": "unicode_script_mixing",
+        "scripts": [
+          "Latin",
+          "Cyrillic",
+          "Greek"
+        ],
+        "unit": "word",
+        "exceptions": "Mathematical, linguistic, and intentional multilingual content."
+      },
+      {
+        "id": "ART_INVALID_DOI",
+        "label": "Invalid or unresolved DOI",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "external_verification",
+        "extraction_regex": "\\b10\\.\\d{4,9}/[-._;()/:A-Z0-9]+\\b",
+        "checks": [
+          "syntax",
+          "resolver_status",
+          "metadata_match",
+          "claim_entailment"
+        ],
+        "case_insensitive": true
+      },
+      {
+        "id": "ART_INVALID_ISBN",
+        "label": "Invalid or mismatched ISBN",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "external_verification",
+        "checks": [
+          "check_digit",
+          "catalog_lookup",
+          "edition_match"
+        ]
+      },
+      {
+        "id": "ART_BROKEN_URL",
+        "label": "Broken or unrelated URL",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "external_verification",
+        "checks": [
+          "parse",
+          "status",
+          "redirect_target",
+          "title_match",
+          "claim_entailment"
+        ]
+      },
+      {
+        "id": "ART_QUOTE_MISMATCH",
+        "label": "Quotation not found or materially altered",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "external_verification",
+        "checks": [
+          "source_access",
+          "normalized_exact_match",
+          "fuzzy_match",
+          "context_match"
+        ],
+        "report_failed_step_only": true
+      },
+      {
+        "id": "ART_CITATION_ENTAILMENT",
+        "label": "Citation does not support exact claim",
+        "evidence": "A",
+        "severity": "critical",
+        "pattern_type": "semantic_verification",
+        "unit": "proposition",
+        "report_failed_step_only": true
+      },
+      {
+        "id": "ART_UNUSED_REFERENCE",
+        "label": "Declared but unused named reference",
+        "evidence": "A",
+        "severity": "medium",
+        "pattern_type": "document_graph",
+        "check": "reference_definition_without_in_text_edge"
+      },
+      {
+        "id": "ART_HIDDEN_OFFCANVAS_TEXT",
+        "label": "Hidden or off-canvas office text",
+        "evidence": "A",
+        "severity": "high",
+        "pattern_type": "office_object_inspection",
+        "checks": [
+          "hidden_shapes",
+          "off_slide_shapes",
+          "white_on_white_text",
+          "tiny_font_text",
+          "speaker_notes",
+          "comments",
+          "alt_text",
+          "tracked_changes"
+        ],
+        "review": "Hidden content may be intentional metadata or working notes."
+      },
+      {
+        "id": "ART_ABRUPT_CUTOFF",
+        "label": "Abrupt generation cutoff candidate",
+        "evidence": "C",
+        "severity": "high",
+        "pattern_type": "document_end",
+        "checks": [
+          "unmatched_delimiter",
+          "incomplete_sentence",
+          "incomplete_list",
+          "dangling_heading"
+        ],
+        "review": "Can also result from file truncation, OCR, or copy/paste."
+      }
+    ]
+  }
+}

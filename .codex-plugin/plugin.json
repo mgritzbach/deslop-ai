@@ -1,0 +1,25 @@
+{
+  "name": "deslop-ai",
+  "version": "0.1.0",
+  "description": "Audit and conservatively rewrite vague, formulaic, unsupported, or low-value text in presentations, documents, PDFs, and pasted copy.",
+  "author": {
+    "name": "Michael Gritzbach",
+    "url": "https://github.com/mgritzbach"
+  },
+  "license": "MIT",
+  "keywords": ["writing", "editing", "presentations", "documents", "plain-language"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "DeSlopAI",
+    "shortDescription": "Remove vague, formulaic, low-value writing.",
+    "longDescription": "DeSlopAI audits every eligible text block for meaning, information value, evidence, relevance, and formulaic language, then creates conservative source-faithful revisions with verification evidence.",
+    "developerName": "Michael Gritzbach",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "Audit this deck and create a conservative revised copy.",
+      "Remove empty buzzwords from this document.",
+      "Check whether every bullet adds real information."
+    ]
+  }
+}

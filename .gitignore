@@ -1,0 +1,26 @@
+# Private source material and generated runs
+private/
+profiles/
+runs/
+*.deslop-run/
+*.deslop-profile.json
+
+# Office/PDF documents are private by default. Synthetic fixtures are generated during tests.
+*.pptx
+*.docx
+*.pdf
+!tests/fixtures/*.pptx
+!tests/fixtures/*.docx
+!tests/fixtures/*.pdf
+
+# Python/build noise
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+dist/
+build/
+
+# Editor/OS
+.DS_Store
+Thumbs.db

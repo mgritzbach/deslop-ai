@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "deslop-request/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "prompt", "input", "operation", "genre", "profileId", "communicationJob", "rewritePolicy"],
+  "properties": {
+    "schemaVersion": {"const": "deslop-request/v1"},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"},
+    "prompt": {"type": "string", "maxLength": 20000},
+    "input": {
+      "oneOf": [
+        {"type": "object", "additionalProperties": false, "required": ["kind", "path"], "properties": {"kind": {"const": "file"}, "path": {"type": "string", "minLength": 1}}},
+        {"type": "object", "additionalProperties": false, "required": ["kind", "text"], "properties": {"kind": {"const": "text"}, "text": {"type": "string", "maxLength": 2000000}}}
+      ]
+    },
+    "operation": {"enum": ["audit", "audit-and-rewrite"]},
+    "genre": {"enum": ["consulting", "academic", "chat", "social", "general", "auto"]},
+    "profileId": {"type": "string", "pattern": "^(none|[a-z0-9][a-z0-9-]{0,63})$"},
+    "communicationJob": {
+      "type": "object", "additionalProperties": false,
+      "required": ["audience", "outcome", "takeaway"],
+      "properties": {"audience": {"type": "string", "maxLength": 500}, "outcome": {"type": "string", "maxLength": 500}, "takeaway": {"type": "string", "maxLength": 1000}}
+    },
+    "rewritePolicy": {"const": "conservative"},
+    "preserveTerms": {"type": "array", "maxItems": 200, "items": {"type": "string", "minLength": 1, "maxLength": 200}}
+  }
+}
