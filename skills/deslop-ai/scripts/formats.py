@@ -36,6 +36,18 @@ def _auxiliary_word_blocks(path: Path) -> list[dict[str, Any]]:
                             address={"part": label, "paragraph": index}, supportedForRewrite=False,
                             unsupportedReason=f"{label} are audit-only in v1",
                         ))
+            if "word/document.xml" in package.namelist():
+                root = etree.fromstring(package.read("word/document.xml"))
+                namespaces = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+                for label, expression in (("content-control", ".//w:sdt"), ("tracked-insertion", ".//w:ins"), ("tracked-deletion", ".//w:del")):
+                    for index, node in enumerate(root.xpath(expression, namespaces=namespaces)):
+                        text = "".join(node.xpath(".//w:t/text()", namespaces=namespaces)).strip()
+                        if text:
+                            blocks.append(_block(
+                                f"{label}:{index}", text, scope=label, role="notes", format="docx",
+                                address={"part": label, "index": index}, supportedForRewrite=False,
+                                unsupportedReason=f"{label} text is audit-only in v1",
+                            ))
     except (KeyError, zipfile.BadZipFile):
         pass
     return blocks
@@ -328,11 +340,27 @@ def extract_pptx(path: Path) -> dict[str, Any]:
                     ))
         except Exception:
             pass
+    try:
+        from lxml import etree
+        with zipfile.ZipFile(path) as package:
+            diagram_parts = sorted(name for name in package.namelist() if name.startswith("ppt/diagrams/data") and name.endswith(".xml"))
+            for part_index, part in enumerate(diagram_parts):
+                root = etree.fromstring(package.read(part))
+                texts = root.xpath(".//*[local-name()='t']/text()")
+                for text_index, text in enumerate(texts):
+                    if str(text).strip():
+                        blocks.append(_block(
+                            f"smartart:part:{part_index}:text:{text_index}", str(text).strip(), scope=f"smartart:{part_index}",
+                            role="smartart-text", format="pptx", address={"container": "smartart", "part": part, "text": text_index},
+                            supportedForRewrite=False, unsupportedReason="SmartArt text is audit-only in v1",
+                        ))
+    except (KeyError, zipfile.BadZipFile):
+        pass
     invariants = {
         "slideCount": len(prs.slides), "slideWidth": int(prs.slide_width), "slideHeight": int(prs.slide_height),
         "masterCount": len(prs.slide_masters), "layoutCount": sum(len(master.slide_layouts) for master in prs.slide_masters),
         "geometry": geometry,
-        "nonTextParts": _package_hashes(path, ("ppt/media/", "ppt/charts/", "ppt/embeddings/", "ppt/slideMasters/", "ppt/slideLayouts/", "ppt/theme/")),
+        "nonTextParts": _package_hashes(path, ("ppt/media/", "ppt/charts/", "ppt/diagrams/", "ppt/embeddings/", "ppt/slideMasters/", "ppt/slideLayouts/", "ppt/theme/")),
         "relationships": _package_hashes(path, (), (".rels",)),
     }
     return {"kind": "pptx", "path": str(path), "sourceHash": sha256_file(path), "blocks": blocks, "invariants": invariants}
