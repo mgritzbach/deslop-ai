@@ -79,6 +79,7 @@ Flag:
 - agentless passive decisions and tasks such as `a decision was made`, `the issue will be addressed`, or `approval is needed` when the actor or accountable owner matters but is absent;
 - stacked hedges and pseudo-actions such as `consider exploring`, `may be worth looking into`, or `further work could help inform future decisions` when no decision, test, output, owner, or trigger is defined;
 - unspecified plural buckets such as `several key factors`, `various challenges`, or `multiple levers` when the text never names the members, evidence, or concrete consequence;
+- generic directional and comparative claims such as `performance is better`, `costs are lower`, or `adoption is growing` when the baseline, period, comparator, and size are absent;
 - paraphrased blocks that repeat the same claim without adding a new fact, reason, implication, qualification, or action;
 - generic balance statements such as unnamed opportunities and challenges that avoid the actual trade-off;
 - magnitude or success claims without a measure, baseline, comparison, threshold, or citation.
@@ -90,6 +91,8 @@ Do not ban passive voice. It is legitimate when the actor is unknown, irrelevant
 Do not remove uncertainty merely to sound decisive. Preserve calibrated scientific claims, explicit risks, policy permissions, and conditional options. The defect is compounded noncommitment without an operational object—not a single `may`, `might`, `could`, or `should` tied to a real outcome or condition.
 
 Do not demand an exact count whenever the source legitimately reports `several`, `many`, `various`, or `multiple`. Approximate quantifiers can carry real information. Preserve them when attached to a concrete population and predicate, a technical term, an enumerated list, a measured range, or a stated consequence. The defect is an empty category that promises unnamed content.
+
+Do not require every directional statement to contain a number. A concrete outcome such as `Patient symptoms improved` adds information even when effect size belongs elsewhere. Preserve comparisons that identify a reference group, prior version, time period, cause, condition, or explicit baseline. Flag generic business and result claims that supply none of those anchors, and request the missing context without fabricating it.
 
 ## 4. Value test
 

@@ -386,6 +386,49 @@ class TestDeSlop(unittest.TestCase):
             self.assertEqual("meaningful", block_assessments[0]["verdict"])
             self.assertFalse(any(item["ruleId"] == "VALUE_UNSPECIFIED_BUCKET" for item in block_findings))
 
+    def test_generic_comparisons_require_anchors_but_concrete_direction_survives(self) -> None:
+        unanchored = [
+            ("Performance is better.", "consulting"),
+            ("The new model is faster and more efficient.", "general"),
+            ("Customer experience has improved.", "social"),
+            ("Costs are lower.", "consulting"),
+            ("Adoption is growing.", "general"),
+            ("The approach delivers greater value.", "consulting"),
+            ("Results are stronger.", "academic"),
+            ("The market is becoming more attractive.", "social"),
+            ("Engagement continues to rise.", "social"),
+            ("This solution is more scalable.", "chat"),
+            ("Revenue increased.", "consulting"),
+            ("Procurement signals are rising.", "consulting"),
+        ]
+        findings = []
+        assessments = []
+        for i, (text, genre) in enumerate(unanchored):
+            block = {"blockId": f"comparison-{i}", "locator": f"comparison:{i}", "text": text, "sourceHash": str(i), "scope": f"comparison-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], genre)
+            findings.extend(block_findings)
+            assessments.extend(block_assessments)
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments))
+        self.assertEqual(12, len([item for item in findings if item["ruleId"] == "VALUE_UNANCHORED_COMPARISON"]))
+
+        controls = [
+            "Cycle time fell from 9 days to 4 days.",
+            "The new model is faster than version 2.",
+            "Revenue increased after the price cut.",
+            "Costs are lower in Germany than in France.",
+            "Engagement rose year-on-year.",
+            "The treatment group improved relative to placebo.",
+            "Temperatures are higher at noon than at dawn.",
+            "The faster algorithm reduced runtime by 12%.",
+            "Patient symptoms improved.",
+            "The bridge is taller than the tower.",
+        ]
+        for i, text in enumerate(controls):
+            block = {"blockId": f"comparison-control-{i}", "locator": f"comparison-control:{i}", "text": text, "sourceHash": str(i), "scope": f"comparison-control-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], "general")
+            self.assertEqual("meaningful", block_assessments[0]["verdict"])
+            self.assertFalse(any(item["ruleId"] == "VALUE_UNANCHORED_COMPARISON" for item in block_findings))
+
     def test_explicit_container_contradictions_bind_to_headline(self) -> None:
         conflicts = [
             ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),

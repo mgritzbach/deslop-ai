@@ -237,7 +237,7 @@ CONTENT_VERBS = {
     "approve", "assess", "choose", "decide", "delay", "deliver", "file", "hire",
     "improve", "move", "produce", "publish", "reduce", "reject", "review", "select",
     "send", "start", "stop", "store", "submit",
-    "cover", "covers", "lack", "lacks", "use", "uses", "withdrew",
+    "cover", "covers", "lack", "lacks", "rose", "use", "uses", "withdrew",
 }
 LOCAL_SLOP_PHRASES = {
     "a quiet shift", "today's fast-paced", "fast-paced landscape", "evolving landscape",
@@ -323,6 +323,21 @@ SPECIFIC_BUCKET_ACTION_RE = re.compile(
     r"\b(?:approved|rejected|signed|submitted|missed|failed|completed|selected|voted|"
     r"filed|withdrew|produced|use|uses|lack|lacks|covers|stored|measured|reported|"
     r"named|listed|include|includes)\b",
+    re.I,
+)
+GENERIC_COMPARISON_CLAIM_RE = re.compile(
+    r"\b(?:performance|results?|outcomes?|customer\s+experience|experience|costs?|adoption|"
+    r"engagement|revenue|sales|demand|efficiency|quality|productivity|market|signals?|model|"
+    r"approach|solution)\b.{0,60}\b(?:better|worse|faster|slower|higher|lower|stronger|"
+    r"weaker|greater(?:\s+value)?|more\s+(?:efficient|effective|scalable|attractive|productive|valuable)|"
+    r"less\s+(?:efficient|effective|scalable|attractive|productive|valuable)|improved|increased|"
+    r"decreased|grew|fell|rose|risen|rise|rising|growing|declining)\b",
+    re.I,
+)
+COMPARISON_ANCHOR_RE = re.compile(
+    r"\b(?:than|versus|vs\.?|compared\s+(?:with|to)|relative\s+to|after|before|since|"
+    r"year[- ]on[- ]year|month[- ]on[- ]month|quarter[- ]on[- ]quarter|week[- ]on[- ]week|"
+    r"over\s+the\s+past|between|baseline|target)\b|\bfrom\b.{0,50}\bto\b",
     re.I,
 )
 NON_ACTOR_BY_WORDS = {
@@ -577,6 +592,15 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
         and ";" not in text
         and not SPECIFIC_BUCKET_ACTION_RE.search(text)
     )
+    has_explicit_comparison = bool(COMPARISON_ANCHOR_RE.search(text))
+    has_named_group_contrast = has_named and bool(re.search(r"\b(?:but|while|whereas)\b", text, re.I))
+    unanchored_comparison = (
+        bool(GENERIC_COMPARISON_CLAIM_RE.search(text))
+        and not has_explicit_comparison
+        and not has_named_group_contrast
+        and not has_number
+        and not has_citation
+    )
     vague_noun_count = sum(word in VAGUE_NOUN_STACK_WORDS for word in words)
     vague_noun_stack = (
         role in {"headline", "bullet", "caption"}
@@ -607,6 +631,8 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
         return {**base, "verdict": "needs-improvement", "meaning": "Suggests considering or exploring activity without committing to a defined decision or task.", "valueAdded": "Signals openness but does not identify what will be produced, decided, tested, or triggered.", "relevance": "The recipient must still convert the suggestion into an assignment or decision rule.", "reason": "Stacked hedges create a noncommittal pseudo-action.", "improvement": "State the actual supported action, decision, experiment, or risk condition. Name the owner and output when the source provides them; otherwise request those facts. Preserve genuine uncertainty instead of overstating confidence."}
     if unspecified_bucket:
         return {**base, "verdict": "needs-improvement", "meaning": "Refers to a plural category without identifying its members or substantive relationship.", "valueAdded": "Promises factors, opportunities, challenges, or levers but does not tell the reader what they are.", "relevance": "A bucket label adds value only when its contents, evidence, or concrete consequence are visible.", "reason": "Unspecified plural bucket implies substance without supplying it.", "improvement": "Name the supported members, state the concrete relationship or consequence, or delete the bucket claim. If the source does not identify them, request the missing list rather than inventing it."}
+    if unanchored_comparison:
+        return {**base, "verdict": "needs-improvement", "meaning": "Claims improvement, decline, or comparative advantage without identifying the reference point.", "valueAdded": "Provides direction but not the baseline, period, comparator, or size needed to interpret it.", "relevance": "A reader cannot judge whether the change is meaningful or decision-relevant without comparison context.", "reason": "Generic directional or comparative claim lacks a baseline, period, or reference group.", "improvement": "Add the supported comparator, time period, baseline, and measured change. If the source contains only direction, state that limitation rather than inventing a number."}
     if ownerless_action:
         return {**base, "verdict": "needs-improvement", "meaning": "States that a decision, review, approval, or task exists without naming the responsible actor.", "valueAdded": "The required activity is visible, but ownership and accountability are not.", "relevance": "The recipient cannot assign, verify, or escalate the action without knowing who decides or acts.", "reason": "Agentless passive decision or task hides responsibility.", "improvement": "Name the supported decision-maker or owner and the concrete action. Add a deadline or completion condition when the source provides one; otherwise request the missing owner instead of inventing it."}
     if orphan_reference:
@@ -636,7 +662,15 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
     if too_short_to_judge:
         return {**base, "verdict": "abstain", "meaning": "Insufficient standalone context.", "valueAdded": "Cannot determine reliably.", "relevance": "May be a label.", "reason": "Too little text for a safe value judgment.", "improvement": "Review with its visual/container context."}
 
-    value_markers = int(has_number) + int(has_named) + int(content_verb_count > 0) + int(len(unique) >= 6)
+    specific_short_claim = (
+        content_verb_count > 0
+        and len(unique) >= 3
+        and abstract_count == 0
+        and not unique.intersection({"thing", "things", "something", "anything", "everything"})
+    )
+    value_markers = int(has_number) + int(has_named) + int(content_verb_count > 0) + int(len(unique) >= 6) + int(has_explicit_comparison)
+    if specific_short_claim:
+        return {**base, "verdict": "meaningful", "meaning": "States a concise subject-specific outcome or action.", "valueAdded": "Adds a concrete directional claim without generic filler.", "relevance": f"Fits the {role} role; verify evidentiary support in context.", "reason": "Short claim contains a concrete subject and content verb."}
     if value_markers >= 2 or role in {"table-cell", "headline"}:
         return {**base, "verdict": "meaningful", "meaning": "Contains a concrete subject, action, label, or claim.", "valueAdded": "Adds identifiable information at this location.", "relevance": f"Fits the {role} role; verify against the communication job.", "reason": "Passes the local specificity and information-gain screen."}
     return {**base, "verdict": "needs-improvement", "meaning": "A grammatical statement with limited concrete content.", "valueAdded": "Weak or unclear information gain.", "relevance": "The connection to the communication job is not explicit.", "reason": "Lacks enough subject-specific evidence, mechanism, action, or qualification.", "improvement": "Make the claim testable and specific, or remove it if it does not change the reader's understanding or decision."}
@@ -749,6 +783,7 @@ class Analyzer:
                     else "VALUE_OWNERLESS_ACTION" if assessment["reason"].startswith("Agentless passive")
                     else "VALUE_PSEUDO_ACTION" if assessment["reason"].startswith("Stacked hedges")
                     else "VALUE_UNSPECIFIED_BUCKET" if assessment["reason"].startswith("Unspecified plural bucket")
+                    else "VALUE_UNANCHORED_COMPARISON" if assessment["reason"].startswith("Generic directional")
                     else "VALUE_BLOCK"
                 )
                 findings.append(self._finding(
