@@ -258,6 +258,20 @@ VAGUE_NOUN_STACK_WORDS = {
     "operational", "orchestration", "organizational", "realization", "scalable", "solution",
     "stakeholder", "strategic", "transformation", "value",
 }
+BARE_REFERENCE_RE = re.compile(
+    r"^\s*(?:this|that|it|they|these|those)\s+"
+    r"(?:is|are|was|were|has|have|had|will|would|can|could|may|might|must|should|"
+    r"changes?|defines?|unlocks?|requires?|needs?|shows?|proves?|means?|matters?|works?|"
+    r"fails?|succeeds?|allows?|prevents?|creates?|drives?|supports?|enables?|approved?|rejected?|"
+    r"cuts?|reduces?|increases?|delays?|accelerates?|improves?|lowers?|raises?)\b",
+    re.I,
+)
+VAGUE_DEMONSTRATIVE_RE = re.compile(
+    r"^\s*(?:these|those)\s+(?:figures|numbers|results|findings|insights|factors|issues|"
+    r"priorities|elements|themes|considerations|points|things|areas|opportunities|"
+    r"challenges|capabilities|assets)\b",
+    re.I,
+)
 VAGUE_AUTHORITY_RE = re.compile(
     r"\b(?:experts agree|research shows|studies show|the data (?:is|are) clear|it is widely (?:known|recognized))\b",
     re.I,
@@ -476,6 +490,10 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
     workplace_platitude = bool(WORKPLACE_PLATITUDE_RE.search(text)) and not has_number and not has_citation
     non_operational_action = bool(NON_OPERATIONAL_ACTION_RE.search(text)) and not has_number and not has_citation and not has_named
     unsupported_magnitude = bool(UNSUPPORTED_MAGNITUDE_RE.search(text)) and not has_number and not has_citation
+    orphan_reference = (
+        bool(BARE_REFERENCE_RE.search(text) or VAGUE_DEMONSTRATIVE_RE.search(text))
+        and (role == "headline" or not nearby_texts)
+    )
     vague_noun_count = sum(word in VAGUE_NOUN_STACK_WORDS for word in words)
     vague_noun_stack = (
         role in {"headline", "bullet", "caption"}
@@ -502,6 +520,8 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
 
     if duplicate:
         return {**base, "verdict": "needs-improvement", "meaning": "Repeats a nearby block.", "valueAdded": "No unique information detected.", "relevance": "Redundant in this location.", "reason": "This block duplicates nearby text.", "improvement": "Delete it or replace it with a distinct fact, reason, action, qualification, or decision."}
+    if orphan_reference:
+        return {**base, "verdict": "needs-improvement", "meaning": "Makes a claim about an unnamed prior subject.", "valueAdded": "The consequence may be stated, but the reader cannot identify what causes or owns it.", "relevance": "A standalone block needs a clear antecedent in the same visible container; a headline must identify its subject directly.", "reason": "Orphaned pronoun or demonstrative reference has no clear antecedent.", "improvement": "Replace the pronoun or vague carrier noun with the exact subject already supported by the source. If the subject is absent, request it instead of guessing."}
     if generic_heading_label:
         return {**base, "verdict": "needs-improvement", "meaning": "Labels a section without describing its contents or takeaway.", "valueAdded": "Provides hierarchy but no standalone orientation.", "relevance": "Readers should understand the section when scanning headings alone.", "reason": "Generic heading depends entirely on the body and could label almost any document.", "improvement": "Name the specific subject, decision, action, or result covered by the section."}
     if self_announcing:
@@ -634,7 +654,11 @@ class Analyzer:
             assessments.append(assessment)
             findings.extend(self.analyze_block(block, genre))
             if assessment["verdict"] == "needs-improvement":
-                value_rule = "VALUE_NOUN_STACK" if assessment["reason"].startswith("Abstract noun stack") else "VALUE_BLOCK"
+                value_rule = (
+                    "VALUE_NOUN_STACK" if assessment["reason"].startswith("Abstract noun stack")
+                    else "VALUE_ORPHAN_REFERENCE" if assessment["reason"].startswith("Orphaned pronoun")
+                    else "VALUE_BLOCK"
+                )
                 findings.append(self._finding(
                     block, value_rule, "meaning and information value", "E", "high",
                     assessment["reason"], "Improve or remove this block; do not publish empty words.",

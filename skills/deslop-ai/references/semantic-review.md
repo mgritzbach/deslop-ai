@@ -34,6 +34,8 @@ Apply two tests to every substantive block:
 
 A headline may rely on nouns that are clearly defined elsewhere on the same slide or page. It may not rely on presenter narration, a distant slide, or an undefined abstraction. Flag vague referents and containers such as `this`, `these`, `it`, `wedge`, `route`, `decision`, `asset`, `capability`, `model`, `chain`, `boundary`, `platform`, or `solution` when the visible context does not say exactly what they denote. These words are not defects by themselves; the defect is missing referential meaning.
 
+Pronouns and demonstratives may refer to a clearly stated antecedent in the same visible section. Preserve that normal cohesion. Flag them when the antecedent exists only in the author's memory, presenter narration, a distant container, or an unavailable link. Headlines require the clearest treatment: replace a bare `this`, `it`, `they`, or `these figures` with the supported subject so the title survives extraction into an agenda or screenshot.
+
 Also flag:
 
 - a topic label presented as though it were a conclusion;

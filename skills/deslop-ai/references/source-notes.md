@@ -15,6 +15,7 @@ Primary orientation:
 - GOV.UK accessible-document and heading guidance for clear, active, descriptive headings that remain useful when scanned independently.
 - W3C WAI heading guidance for headings that accurately describe a section's topic or purpose and reflect its content structure.
 - CDC/ATSDR clear-writing guidance on hidden verbs and noun strings, used as an editorial basis for detecting actionless abstract stacks while preserving concrete technical labels.
+- The CDC Style Guide's pronoun-and-antecedent guidance, used to flag orphaned references while preserving pronouns whose referent is explicit in the same container.
 - Razniewski et al., “A Straightforward Pipeline for Targeted Entailment and Contradiction Detection,” as orientation for treating broader contradiction detection as a semantic inference task; the local deterministic fallback is intentionally limited to explicit, high-confidence conflicts.
 
 The bundled 434-word CSV is the style-related subset of the upstream 900-row excess-vocabulary dataset. Retain upstream attribution. Corpus-level markers cannot classify individual documents.

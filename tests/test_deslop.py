@@ -206,6 +206,62 @@ class TestDeSlop(unittest.TestCase):
         noun_findings = [item for item in findings if item["ruleId"] == "VALUE_NOUN_STACK"]
         self.assertEqual(10, len(noun_findings))
 
+    def test_orphan_references_fail_but_clear_container_antecedents_survive(self) -> None:
+        orphans = [
+            ("This changes everything.", "headline", "social"),
+            ("These figures define the opportunity.", "headline", "consulting"),
+            ("That is the path forward.", "headline", "consulting"),
+            ("It is now clear.", "headline", "academic"),
+            ("This is what matters.", "paragraph", "social"),
+            ("They need to act now.", "bullet", "chat"),
+            ("This unlocks the next phase.", "headline", "general"),
+            ("Those are the key priorities.", "paragraph", "consulting"),
+        ]
+        findings = []
+        assessments = []
+        for i, (text, role, genre) in enumerate(orphans):
+            block = {"blockId": f"orphan-{i}", "locator": f"orphan:{i}", "text": text, "sourceHash": str(i), "scope": f"orphan-{i}", "role": role}
+            block_findings, block_assessments = self.analyzer.analyze([block], genre)
+            findings.extend(block_findings)
+            assessments.extend(block_assessments)
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments))
+        self.assertEqual(8, len([item for item in findings if item["ruleId"] == "VALUE_ORPHAN_REFERENCE"]))
+
+        reordered_slide = [
+            {"blockId": "reordered-body", "locator": "reordered:body", "text": "Automation removes two approval steps.", "sourceHash": "rh1", "scope": "reordered", "role": "paragraph"},
+            {"blockId": "reordered-headline", "locator": "reordered:headline", "text": "This cuts onboarding time by six days.", "sourceHash": "rh2", "scope": "reordered", "role": "headline"},
+        ]
+        reordered_findings, reordered_assessments = self.analyzer.analyze(reordered_slide, "consulting")
+        self.assertEqual("needs-improvement", reordered_assessments[1]["verdict"])
+        self.assertTrue(any(item["ruleId"] == "VALUE_ORPHAN_REFERENCE" and item["blockId"] == "reordered-headline" for item in reordered_findings))
+
+        resolved_pairs = [
+            ("The regulator approved the license.", "This allows sales to start Monday.", "consulting"),
+            ("Revenue fell 12%.", "This requires a EUR 2m cost reduction.", "consulting"),
+            ("The ethics board met on 12 May.", "They approved the protocol that day.", "academic"),
+            ("The proposed plant has six production lines.", "It costs EUR 4.2m and takes six months.", "general"),
+        ]
+        for i, (antecedent, reference, genre) in enumerate(resolved_pairs):
+            scope = f"resolved-{i}"
+            blocks = [
+                {"blockId": f"{scope}-a", "locator": f"{scope}:a", "text": antecedent, "sourceHash": f"{i}a", "scope": scope, "role": "paragraph"},
+                {"blockId": f"{scope}-b", "locator": f"{scope}:b", "text": reference, "sourceHash": f"{i}b", "scope": scope, "role": "paragraph"},
+            ]
+            block_findings, block_assessments = self.analyzer.analyze(blocks, genre)
+            self.assertEqual("meaningful", block_assessments[1]["verdict"])
+            self.assertFalse(any(item["ruleId"] == "VALUE_ORPHAN_REFERENCE" for item in block_findings))
+
+        self_defining = [
+            "These three suppliers failed certification: Alpha, Beta, and Gamma.",
+            "This study estimates treatment effects across 42 hospitals.",
+            "Those two options cost EUR 2m and EUR 3m, respectively.",
+        ]
+        for i, text in enumerate(self_defining):
+            block = {"blockId": f"defined-{i}", "locator": f"defined:{i}", "text": text, "sourceHash": str(i), "scope": f"defined-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], "general")
+            self.assertEqual("meaningful", block_assessments[0]["verdict"])
+            self.assertFalse(any(item["ruleId"] == "VALUE_ORPHAN_REFERENCE" for item in block_findings))
+
     def test_explicit_container_contradictions_bind_to_headline(self) -> None:
         conflicts = [
             ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),
