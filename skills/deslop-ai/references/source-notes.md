@@ -13,5 +13,7 @@ Primary orientation:
 - LinkedIn, “Keeping conversations real on LinkedIn,” for the platform-level distinction between useful perspective and polished but generic or repetitive content.
 - Liebscher et al., “Workslop: Examining the prevalence, antecedents and consequences of low-quality AI-generated content at work,” for recipient rework and task-advancement failure.
 - GOV.UK accessible-document and heading guidance for clear, active, descriptive headings that remain useful when scanned independently.
+- W3C WAI heading guidance for headings that accurately describe a section's topic or purpose and reflect its content structure.
+- Razniewski et al., “A Straightforward Pipeline for Targeted Entailment and Contradiction Detection,” as orientation for treating broader contradiction detection as a semantic inference task; the local deterministic fallback is intentionally limited to explicit, high-confidence conflicts.
 
 The bundled 434-word CSV is the style-related subset of the upstream 900-row excess-vocabulary dataset. Retain upstream attribution. Corpus-level markers cannot classify individual documents.

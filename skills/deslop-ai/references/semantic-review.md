@@ -42,6 +42,9 @@ Also flag:
 - a headline that merely announces the content below rather than interpreting it;
 - multiple meaningful blocks that do not combine into a coherent standalone proposition;
 - shorthand that is intelligible only to the author or project team.
+- a headline and supporting block that make explicit, incompatible claims about the same subject, status, place, time, or requirement.
+
+Treat contradiction as a source-integrity problem, not a rewriting opportunity. Do not choose the more convenient claim or silently qualify one side. Identify both locators, ask which fact is current, and abstain from replacing either claim until the conflict is resolved. Do not flag conditional risks, different time periods, different populations, or different requirements as contradictions merely because they use opposite words.
 
 When a slide or page fails at container level, bind `needs-improvement` to the headline or highest-level substantive block and explain the missing relationship. Do not let individually meaningful cards or bullets compensate for a meaningless headline.
 

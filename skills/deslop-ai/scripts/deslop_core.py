@@ -294,6 +294,19 @@ UNSUPPORTED_MAGNITUDE_RE = re.compile(
     r"\bresults?\s+(?:was|were)\s+(?:highly\s+)?(?:robust|meaningful|strong|significant)\b",
     re.I,
 )
+CONDITIONAL_CLAIM_RE = re.compile(r"\b(?:could|may|might|risk|if|unless|until|scenario|assuming|subject to)\b", re.I)
+POSITIVE_DIRECTION_RE = re.compile(r"\b(?:increase[ds]?|increasing|grew|grown|rose|risen|improve[ds]?|improving|higher)\b", re.I)
+NEGATIVE_DIRECTION_RE = re.compile(r"\b(?:decrease[ds]?|decreasing|fell|fallen|decline[ds]?|declining|worsen(?:ed|s|ing)?|lower)\b", re.I)
+POSITIVE_STATUS_RE = re.compile(
+    r"\b(?:approved|authorized|validated|completed?|certified|ready|on track|proceed|launched|meets?)\b",
+    re.I,
+)
+NEGATIVE_STATUS_RE = re.compile(
+    r"\b(?:not approved|unapproved|approval (?:remains )?pending|not authorized|unauthorized|"
+    r"not validated|unvalidated|incomplete|uncertified|not ready|off track|do not proceed|"
+    r"cancelled|canceled|postponed|blocked|fails?|does not meet|did not meet)\b",
+    re.I,
+)
 FURNITURE_PATTERNS = [
     re.compile(r"^\s*\d+\s*$"),
     re.compile(r"^\s*(?:confidential|draft|source|sources)\s*:?.*$", re.I),
@@ -347,6 +360,57 @@ def _near_duplicate(text: str, other: str) -> bool:
     containment = intersection / min(len(left), len(right))
     union = intersection / len(left | right)
     return containment >= 0.75 and union >= 0.55
+
+
+def _polarity(text: str, positive: re.Pattern[str], negative: re.Pattern[str]) -> int:
+    negative_matches = list(negative.finditer(text))
+    scrubbed = text
+    for match in reversed(negative_matches):
+        scrubbed = scrubbed[:match.start()] + " " * (match.end() - match.start()) + scrubbed[match.end():]
+    positive_hit = bool(positive.search(scrubbed))
+    negative_hit = bool(negative_matches)
+    if positive_hit and negative_hit:
+        return 0
+    if positive_hit:
+        return 1
+    if negative_hit:
+        return -1
+    return 0
+
+
+def _conflict_subject(text: str) -> set[str]:
+    scrubbed = text
+    for pattern in (POSITIVE_DIRECTION_RE, NEGATIVE_DIRECTION_RE, POSITIVE_STATUS_RE, NEGATIVE_STATUS_RE):
+        scrubbed = pattern.sub(" ", scrubbed)
+    return _signature_tokens(scrubbed) - {
+        "all", "any", "every", "none", "not", "remain", "still", "currently", "two",
+    }
+
+
+def _same_conflict_subject(left: str, right: str) -> bool:
+    left_subject = _conflict_subject(left)
+    right_subject = _conflict_subject(right)
+    if not left_subject or not right_subject:
+        return False
+    if left_subject == right_subject:
+        return True
+    intersection = len(left_subject & right_subject)
+    containment = intersection / min(len(left_subject), len(right_subject))
+    return intersection >= 2 and containment >= 0.60
+
+
+def _explicit_container_conflict(left: str, right: str) -> str | None:
+    if CONDITIONAL_CLAIM_RE.search(left) or CONDITIONAL_CLAIM_RE.search(right):
+        return None
+    left_direction = _polarity(left, POSITIVE_DIRECTION_RE, NEGATIVE_DIRECTION_RE)
+    right_direction = _polarity(right, POSITIVE_DIRECTION_RE, NEGATIVE_DIRECTION_RE)
+    if left_direction and right_direction and left_direction == -right_direction and _same_conflict_subject(left, right):
+        return "opposite directional claims"
+    left_status = _polarity(left, POSITIVE_STATUS_RE, NEGATIVE_STATUS_RE)
+    right_status = _polarity(right, POSITIVE_STATUS_RE, NEGATIVE_STATUS_RE)
+    if left_status and right_status and left_status == -right_status and _same_conflict_subject(left, right):
+        return "incompatible status claims"
+    return None
 
 
 def classify_role(block: dict[str, Any]) -> str:
@@ -555,6 +619,36 @@ class Analyzer:
                     suggestion=assessment["improvement"], confidence=0.88,
                 ).to_dict())
             previous_by_scope[scope].append(block)
+        assessment_by_id = {item["blockId"]: item for item in assessments}
+        scopes: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for block in blocks:
+            scopes[block.get("scope", "document")].append(block)
+        for scope_blocks in scopes.values():
+            headlines = [block for block in scope_blocks if classify_role(block) == "headline"]
+            substantive = [block for block in scope_blocks if classify_role(block) not in {"headline", "furniture"}]
+            for headline in headlines:
+                conflict = next(
+                    ((other, kind) for other in substantive if (kind := _explicit_container_conflict(headline["text"], other["text"]))),
+                    None,
+                )
+                if not conflict:
+                    continue
+                other, kind = conflict
+                assessment = assessment_by_id[headline["blockId"]]
+                assessment.update({
+                    "verdict": "needs-improvement",
+                    "meaning": "The headline and supporting content make incompatible claims.",
+                    "valueAdded": "The container cannot support a stable conclusion while both claims remain.",
+                    "relevance": "A headline must accurately represent the content it governs.",
+                    "reason": f"Explicit container contradiction: {kind}.",
+                    "improvement": "Resolve the underlying fact or status, then rewrite the headline and supporting block to state one qualified, time-bound conclusion.",
+                })
+                findings.append(self._finding(
+                    headline, "CONTAINER_EXPLICIT_CONTRADICTION", "headline and body consistency", "E", "high",
+                    f"Headline conflicts with {other['locator']}: {kind}.",
+                    "Resolve the source conflict before publishing; do not guess which claim is current.",
+                    matched=f"{headline['text']} <> {other['text']}", confidence=0.94,
+                ).to_dict())
         return findings, assessments
 
 
@@ -598,7 +692,7 @@ def editorial_vector(findings: list[dict[str, Any]], assessments: list[dict[str,
             counts["artifacts"] += 2
         if any(word in family for word in ("authority", "citation", "support", "evidence")):
             counts["support"] += 1
-        if any(word in family for word in ("structure", "parallel", "triplet", "dash", "transition")) or rule.startswith(("STR_", "DOC_")):
+        if any(word in family for word in ("structure", "parallel", "triplet", "dash", "transition")) or rule.startswith(("STR_", "DOC_", "CONTAINER_")):
             counts["structure"] += 1
         if any(word in family for word in ("significance", "consultant", "promotional", "abstract", "inflation")):
             counts["inflation"] += 1

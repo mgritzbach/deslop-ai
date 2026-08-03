@@ -13,7 +13,7 @@ SKILL = ROOT / "skills" / "deslop-ai"
 sys.path.insert(0, str(SKILL / "scripts"))
 
 from build_fixtures import build
-from deslop_core import Analyzer, DeslopError, PRIVATE_ROOT, protected_equal, sha256_file, strict_json_load, validate_request
+from deslop_core import Analyzer, DeslopError, PRIVATE_ROOT, editorial_vector, protected_equal, sha256_file, strict_json_load, validate_request
 from formats import extract_source
 
 
@@ -53,6 +53,7 @@ class TestDeSlop(unittest.TestCase):
         self.assertIn("coherent standalone proposition", guidance)
         self.assertIn("Actionable-title gate", guidance)
         self.assertIn("Recipient-burden review", guidance)
+        self.assertIn("source-integrity problem", guidance)
         self.assertIn("definition of done", guidance)
         self.assertIn("What should happen next?", guidance)
         self.assertIn("gating condition", skill)
@@ -168,6 +169,68 @@ class TestDeSlop(unittest.TestCase):
         _, assessments = self.analyzer.analyze(blocks, "general")
         self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments[:len(unsupported)]))
         self.assertTrue(all(item["verdict"] == "meaningful" for item in assessments[len(unsupported):]))
+
+    def test_explicit_container_contradictions_bind_to_headline(self) -> None:
+        conflicts = [
+            ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),
+            ("The pilot is approved.", "Pilot approval remains pending."),
+            ("All suppliers are certified.", "Two suppliers remain uncertified."),
+            ("Option A meets all safety requirements.", "Option A fails the safety requirement."),
+            ("The launch remains on track for June.", "The June launch has been postponed."),
+        ]
+        controls = [
+            ("Revenue fell in France but grew in Germany.", "France declined 5%; Germany increased 8%."),
+            ("The pilot is approved.", "Risk: approval could be withdrawn if the safety test fails."),
+            ("Option A meets cost and speed requirements.", "Option A does not meet the optional color preference."),
+            ("All production suppliers are certified.", "Two prospective suppliers remain uncertified."),
+            ("The launch remains on track for June.", "The June launch may be postponed if certification slips."),
+        ]
+        blocks = []
+        for group, pairs in (("conflict", conflicts), ("control", controls)):
+            for index, (headline, body) in enumerate(pairs):
+                scope = f"{group}-{index}"
+                blocks.extend([
+                    {"blockId": f"{scope}-headline", "locator": f"{scope}:headline", "text": headline, "sourceHash": f"{scope}-h", "scope": scope, "role": "headline"},
+                    {"blockId": f"{scope}-body", "locator": f"{scope}:body", "text": body, "sourceHash": f"{scope}-b", "scope": scope, "role": "paragraph"},
+                ])
+        findings, assessments = self.analyzer.analyze(blocks, "consulting")
+        by_id = {item["blockId"]: item for item in assessments}
+        contradiction_findings = [item for item in findings if item["ruleId"] == "CONTAINER_EXPLICIT_CONTRADICTION"]
+        self.assertEqual(5, len(contradiction_findings))
+        for index in range(len(conflicts)):
+            self.assertEqual("needs-improvement", by_id[f"conflict-{index}-headline"]["verdict"])
+        for index in range(len(controls)):
+            self.assertEqual("meaningful", by_id[f"control-{index}-headline"]["verdict"])
+            self.assertFalse(any(item["blockId"] == f"control-{index}-headline" for item in contradiction_findings))
+        self.assertGreater(editorial_vector(contradiction_findings, assessments)["structure"], 0)
+
+    def test_format_adapters_group_headlines_with_supporting_content(self) -> None:
+        from docx import Document
+        from pptx import Presentation
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            markdown = root / "conflict.md"
+            markdown.write_text("# The pilot is approved.\n\nPilot approval remains pending.\n", encoding="utf-8")
+
+            word = root / "conflict.docx"
+            document = Document()
+            document.add_heading("The pilot is approved.", level=1)
+            document.add_paragraph("Pilot approval remains pending.")
+            document.save(word)
+
+            powerpoint = root / "conflict.pptx"
+            presentation = Presentation()
+            slide = presentation.slides.add_slide(presentation.slide_layouts[1])
+            slide.shapes.title.text = "The pilot is approved."
+            slide.placeholders[1].text = "Pilot approval remains pending."
+            presentation.save(powerpoint)
+
+            for path in (markdown, word, powerpoint):
+                source = extract_source(request({"kind": "file", "path": str(path)}))
+                findings, _ = self.analyzer.analyze(source["blocks"], "consulting")
+                conflicts = [item for item in findings if item["ruleId"] == "CONTAINER_EXPLICIT_CONTRADICTION"]
+                self.assertEqual(1, len(conflicts), path.suffix)
 
     def test_every_block_value_coverage(self) -> None:
         source = extract_source(request({"kind": "file", "path": str(self.fixtures / "sample.pptx")}))

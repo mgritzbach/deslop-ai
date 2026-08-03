@@ -105,6 +105,7 @@ def extract_text_file(path: Path) -> dict[str, Any]:
     blocks = []
     position = 0
     fenced = False
+    section_index = 0
     for line_index, line_with_end in enumerate(text.splitlines(keepends=True)):
         line = line_with_end.rstrip("\r\n")
         stripped = line.strip()
@@ -117,10 +118,12 @@ def extract_text_file(path: Path) -> dict[str, Any]:
             continue
         is_heading = path.suffix.lower() == ".md" and bool(re.match(r"^\s*#{1,6}\s+", line))
         is_bullet = bool(re.match(r"^\s*[-*+]\s+", line))
+        if is_heading:
+            section_index += 1
         role = "headline" if is_heading else ("bullet" if is_bullet else "paragraph")
         unsupported = fenced or (path.suffix.lower() == ".md" and (chr(96) in line or re.search(r"\[[^]]+\]\([^)]+\)", line)))
         blocks.append(_block(
-            f"line:{line_index + 1}", line, scope="document",
+            f"line:{line_index + 1}", line, scope=f"section:{section_index}" if path.suffix.lower() == ".md" else "document",
             role=role, isBullet=is_bullet, level=0 if is_heading else None,
             format=path.suffix.lower().lstrip("."), address={"start": start, "end": end},
             supportedForRewrite=not unsupported,
@@ -176,14 +179,18 @@ def extract_docx(path: Path) -> dict[str, Any]:
         raise DeslopError("python-docx is required for DOCX support") from exc
     doc = Document(path)
     blocks: list[dict[str, Any]] = []
+    section_index = 0
     for i, paragraph in enumerate(doc.paragraphs):
         if not paragraph.text.strip():
             continue
         supported, reason = _docx_supported(paragraph)
         style = paragraph.style.name if paragraph.style else ""
         is_bullet = "list" in style.casefold() or bool(paragraph._p.xpath("./w:pPr/w:numPr"))
+        role = _paragraph_role(paragraph.text, style, is_bullet)
+        if role == "headline":
+            section_index += 1
         blocks.append(_block(
-            f"body:paragraph:{i}", paragraph.text, scope=f"body:{i}", role=_paragraph_role(paragraph.text, style, is_bullet),
+            f"body:paragraph:{i}", paragraph.text, scope=f"body:section:{section_index}", role=role,
             style=style, isBullet=is_bullet, level=0 if "title" in style.casefold() else None,
             format="docx", address={"part": "body", "paragraph": i}, supportedForRewrite=supported, unsupportedReason=reason,
         ))
