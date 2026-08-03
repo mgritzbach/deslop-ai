@@ -51,6 +51,9 @@ class TestDeSlop(unittest.TestCase):
         self.assertIn("Container and standalone-meaning review", guidance)
         self.assertIn("presenter narration", guidance)
         self.assertIn("coherent standalone proposition", guidance)
+        self.assertIn("Actionable-title gate", guidance)
+        self.assertIn("What should happen next?", guidance)
+        self.assertIn("gating condition", skill)
         self.assertIn("standalone-meaning gate", skill)
 
     def test_negative_controls_do_not_trigger_high_severity_value_accusation(self) -> None:

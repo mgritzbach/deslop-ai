@@ -17,7 +17,7 @@ Do not assess page numbers, dates used solely as running furniture, confidential
 
 ## 2. Block roles
 
-- **Headline/title:** state a topic, conclusion, tension, decision, or useful framing. Prefer a takeaway over a generic theme.
+- **Headline/title:** state a topic, conclusion, tension, decision, or useful framing. Prefer a takeaway over a generic theme. On a decision or action page, foreground the decision, action, owner, or gating condition.
 - **Bullet/callout:** add a distinct fact, reason, mechanism, action, implication, qualification, or evidence item.
 - **Paragraph:** advance the argument; do not merely restate the heading or preceding sentence.
 - **Table cell/caption:** label or explain a real relationship; short labels can be meaningful.
@@ -44,6 +44,22 @@ Also flag:
 - shorthand that is intelligible only to the author or project team.
 
 When a slide or page fails at container level, bind `needs-improvement` to the headline or highest-level substantive block and explain the missing relationship. Do not let individually meaningful cards or bullets compensate for a meaningless headline.
+
+### Actionable-title gate
+
+Classify the container's primary job as `inform`, `explain`, `decide`, or `act`. For `decide` and `act`, apply a stricter title test: after reading the title alone, can the intended reader say what must be decided or done, by whom when the source identifies an owner, and under what gating condition when one exists?
+
+Flag a title when it:
+
+- merely describes a process or fact while the real decision or next step is buried in a callout;
+- uses an aphorism, slogan, equation, or insider shorthand instead of the operational implication;
+- says that something “needs” owners, evidence, validation, or approval without telling the reader what to do about that requirement;
+- announces a topic such as `buyer system`, `operating model`, or `next steps` without stating the consequence;
+- leaves the reader unable to answer `What should happen next?`.
+
+When the source supports it, convert the title into a direct decision rule or imperative and use the body to explain why. Examples of useful structures include `Do not proceed until [condition]`, `[Owner] must [action] before [event]`, and `Choose [option] because [evidence]`. Treat these as logical structures, not stock phrases: retain the document's vocabulary and avoid forcing every title into the same syntax.
+
+If the body contains a specific next step, compare it with the headline. Put the governing action or decision in the headline and reserve the callout for the immediate execution step. Do not repeat the same instruction twice.
 
 ## 4. Value test
 
