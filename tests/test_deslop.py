@@ -69,6 +69,34 @@ class TestDeSlop(unittest.TestCase):
         self.assertEqual(25, len(assessments))
         self.assertFalse(any(item["verdict"] == "needs-improvement" for item in assessments))
 
+    def test_local_fallback_flags_cross_genre_slop_but_keeps_structural_controls(self) -> None:
+        slop = [
+            "A quiet shift is happening. In today's fast-paced landscape, leaders must embrace a holistic, human-centric mindset. It's not about adopting AI—it's about unlocking potential. The future belongs to those who navigate change with intention.",
+            "Leadership isn't about having all the answers. It's about empowering others, fostering trust, and creating space for growth. Let that sink in.",
+            "Accelerating strategic transformation through integrated capabilities to unlock sustainable value.",
+            "As we navigate this evolving landscape, please leverage cross-functional synergies to drive alignment and operational excellence.",
+            "We are thrilled to announce a groundbreaking solution that seamlessly revolutionizes how teams collaborate.",
+            "This pivotal study delves into the intricate interplay between X and Y, underscoring the multifaceted nature of the rapidly evolving landscape.",
+            "Building a future-ready operating model to enable scalable impact across the enterprise.",
+            "Sometimes the biggest lessons come from the smallest moments. Growth isn't linear—it's a journey. Keep showing up.",
+            "Experts agree that AI is transforming every industry, and research shows organizations must act now.",
+            "Every founder needs three things: clarity, courage, and consistency.",
+            "Success isn't about working harder. It's about working smarter.",
+        ]
+        controls = [
+            "We cut onboarding from 14 days to 8 by removing two approval steps.",
+            "The board delayed the launch—supplier certification was still incomplete.",
+            "The test measured cost, speed, and failure rate.",
+            "We estimate treatment effects using a difference-in-differences design across 42 hospitals.",
+        ]
+        blocks = [
+            {"blockId": f"stress-{i}", "locator": f"stress:{i}", "text": text, "sourceHash": str(i), "scope": f"stress-{i}", "role": "paragraph"}
+            for i, text in enumerate(slop + controls)
+        ]
+        _, assessments = self.analyzer.analyze(blocks, "general")
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments[:len(slop)]))
+        self.assertTrue(all(item["verdict"] == "meaningful" for item in assessments[len(slop):]))
+
     def test_every_block_value_coverage(self) -> None:
         source = extract_source(request({"kind": "file", "path": str(self.fixtures / "sample.pptx")}))
         blocks = [block for block in source["blocks"] if block["eligible"]]

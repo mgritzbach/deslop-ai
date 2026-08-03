@@ -233,7 +233,33 @@ CONTENT_VERBS = {
     "built", "reduced", "increased", "launched", "measured", "found", "shows",
     "changed", "approved", "rejected", "owns", "will", "must", "costs", "saved",
     "sold", "opened", "closed", "reported", "compared", "requires", "caused",
+    "cut", "removed", "delayed", "estimate", "estimates", "tested", "failed",
 }
+LOCAL_SLOP_PHRASES = {
+    "a quiet shift", "today's fast-paced", "fast-paced landscape", "evolving landscape",
+    "navigate change", "navigate this", "holistic", "human-centric", "unlock potential",
+    "unlocking potential", "future belongs to", "let that sink in", "keep showing up",
+    "thrilled to announce", "groundbreaking solution", "seamlessly revolutionizes",
+    "strategic transformation", "integrated capabilities", "sustainable value",
+    "cross-functional synergies", "drive alignment", "operational excellence",
+    "pivotal study", "delves into", "delve into", "intricate interplay", "multifaceted nature",
+    "underscoring", "future-ready", "scalable impact", "across the enterprise",
+    "biggest lessons", "smallest moments", "growth isn't linear", "growth is not linear",
+}
+ABSTRACT_QUALITIES = {
+    "clarity", "courage", "consistency", "trust", "mindset", "authenticity",
+    "purpose", "passion", "potential", "growth", "resilience", "excellence",
+}
+VAGUE_AUTHORITY_RE = re.compile(
+    r"\b(?:experts agree|research shows|studies show|the data (?:is|are) clear|it is widely (?:known|recognized))\b",
+    re.I,
+)
+GENERIC_CONTRAST_RE = re.compile(
+    r"\b(?:success|leadership|growth|innovation|transformation|change|failure|life)\b.{0,80}"
+    r"\b(?:isn't|is not)\s+about\b.{0,120}\b(?:it's|it is)\s+about\b",
+    re.I,
+)
+GENERIC_TRIPLET_RE = re.compile(r"\bevery\s+\w+\s+needs(?:\s+three\s+things)?\s*:", re.I)
 FURNITURE_PATTERNS = [
     re.compile(r"^\s*\d+\s*$"),
     re.compile(r"^\s*(?:confidential|draft|source|sources)\s*:?.*$", re.I),
@@ -275,8 +301,26 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
     abstract_count = sum(word in ABSTRACT_WORDS for word in words)
     content_verb_count = sum(word in CONTENT_VERBS or word.endswith(("ed", "ing")) for word in words)
     has_number = bool(re.search(r"\d", text))
-    has_named = bool(re.search(r"\b[A-Z][a-z]{2,}\b", text))
+    has_citation = bool(re.search(r"https?://|\b10\.\d{4,9}/|\([A-Z][A-Za-z-]+,?\s+\d{4}\)", text))
+    has_named = False
+    for match in re.finditer(r"\b(?:[A-Z]{2,}|[A-Z][a-z]{2,})\b", text):
+        token = match.group(0)
+        prefix = text[:match.start()].rstrip()
+        at_sentence_start = not prefix or prefix[-1:] in ".!?"
+        if token not in {"AI", "LLM", "LLMS"} and (token.isupper() or not at_sentence_start):
+            has_named = True
+            break
     buzz_ratio = abstract_count / max(1, len(words))
+    folded = text.casefold()
+    slop_phrase_count = sum(phrase in folded for phrase in LOCAL_SLOP_PHRASES)
+    vague_authority = bool(VAGUE_AUTHORITY_RE.search(text)) and not has_number and not has_citation
+    generic_contrast = bool(GENERIC_CONTRAST_RE.search(text)) and not has_number and not has_citation
+    generic_triplet = bool(GENERIC_TRIPLET_RE.search(text)) and sum(word in ABSTRACT_QUALITIES for word in words) >= 2
+    clustered_slop = (
+        slop_phrase_count >= 2
+        and not has_number
+        and not has_citation
+    )
     normalized = re.sub(r"\W+", " ", text.casefold()).strip()
     duplicate = any(normalized == re.sub(r"\W+", " ", other.casefold()).strip() for other in nearby_texts if other.strip())
     generic_heading = role == "headline" and len(words) <= 8 and buzz_ratio >= 0.25 and not has_number and content_verb_count == 0
@@ -285,6 +329,12 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
 
     if duplicate:
         return {**base, "verdict": "needs-improvement", "meaning": "Repeats a nearby block.", "valueAdded": "No unique information detected.", "relevance": "Redundant in this location.", "reason": "This block duplicates nearby text.", "improvement": "Delete it or replace it with a distinct fact, reason, action, qualification, or decision."}
+    if vague_authority:
+        return {**base, "verdict": "needs-improvement", "meaning": "Invokes unnamed evidence or consensus.", "valueAdded": "No checkable support is supplied.", "relevance": "Authority claims must let the reader inspect the source.", "reason": "Uses vague authority language without a citation, named source, or measurable result.", "improvement": "Name and cite the source, report the relevant finding, or remove the authority claim."}
+    if generic_contrast or generic_triplet:
+        return {**base, "verdict": "needs-improvement", "meaning": "States a broad maxim in a familiar rhetorical template.", "valueAdded": "No subject-specific mechanism, example, or boundary is supplied.", "relevance": "The wording could fit many unrelated posts.", "reason": "Formulaic contrast or abstract triplet carries rhetoric but little testable information.", "improvement": "State the observed situation, the specific lesson, and the evidence or action that follows."}
+    if clustered_slop:
+        return {**base, "verdict": "needs-improvement", "meaning": "Combines promotional or formulaic abstractions.", "valueAdded": "The passage sounds directional but does not identify a concrete actor, mechanism, measure, or decision.", "relevance": "Polish does not substitute for subject-specific information.", "reason": f"Clusters {slop_phrase_count} generic scaffold or inflation phrases without measurable support.", "improvement": "Replace the scaffolding with the actor, action, object, evidence, trade-off, or next decision. If none exists, delete the passage."}
     if generic_heading:
         return {**base, "verdict": "needs-improvement", "meaning": "Names an abstract theme rather than a claim.", "valueAdded": "No supported takeaway or decision.", "relevance": "A headline should orient the reader or state the point.", "reason": "Buzzword-heavy headline without a concrete subject, action, result, or tension.", "improvement": "State the supported takeaway: who did what, what changed, compared with what, or what the audience must decide."}
     if universal_fit:
