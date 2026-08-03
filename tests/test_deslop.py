@@ -474,6 +474,49 @@ class TestDeSlop(unittest.TestCase):
             self.assertEqual("meaningful", block_assessments[0]["verdict"])
             self.assertFalse(any(item["ruleId"] == "VALUE_CAUSAL_SLOGAN" for item in block_findings))
 
+    def test_formulaic_antithesis_fails_while_substantive_contrasts_survive(self) -> None:
+        empty_contrasts = [
+            ("It's not about technology; it's about transformation.", "consulting"),
+            ("The future is not about prediction; it is about preparation.", "social"),
+            ("Leadership is not about control but empowerment.", "general"),
+            ("Success is not about working harder but working smarter.", "social"),
+            ("Innovation is not a destination; it is a mindset.", "academic"),
+            ("Change is not a challenge but an opportunity.", "consulting"),
+            ("AI is not replacing people; it is augmenting potential.", "chat"),
+            ("This is not just a shift; it is a paradigm.", "general"),
+            ("Growth is not linear; it is a journey.", "social"),
+            ("Strategy is not a plan; it is a choice.", "consulting"),
+            ("Progress is not about speed; it is about direction.", "social"),
+            ("The answer is not more tools but better thinking.", "consulting"),
+        ]
+        findings = []
+        assessments = []
+        for i, (text, genre) in enumerate(empty_contrasts):
+            block = {"blockId": f"antithesis-{i}", "locator": f"antithesis:{i}", "text": text, "sourceHash": str(i), "scope": f"antithesis-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], genre)
+            findings.extend(block_findings)
+            assessments.extend(block_assessments)
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments))
+        self.assertEqual(12, len([item for item in findings if item["ruleId"] == "VALUE_FORMULAIC_ANTITHESIS"]))
+
+        controls = [
+            "The failure came from heat, not pressure.",
+            "The treatment reduced pain, not mortality.",
+            "We need EUR 2m, not EUR 3m.",
+            "The issue is not demand but certification.",
+            "The result reflects correlation, not causation.",
+            "The board chose Option A, not Option B.",
+            "This is not a hypothesis but a legal requirement under section 4.",
+            "The launch is delayed, not cancelled.",
+            "The sample includes adults, not children.",
+            "The sensor measures velocity, not position.",
+        ]
+        for i, text in enumerate(controls):
+            block = {"blockId": f"antithesis-control-{i}", "locator": f"antithesis-control:{i}", "text": text, "sourceHash": str(i), "scope": f"antithesis-control-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], "general")
+            self.assertEqual("meaningful", block_assessments[0]["verdict"])
+            self.assertFalse(any(item["ruleId"] == "VALUE_FORMULAIC_ANTITHESIS" for item in block_findings))
+
     def test_explicit_container_contradictions_bind_to_headline(self) -> None:
         conflicts = [
             ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),

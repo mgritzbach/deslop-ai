@@ -81,6 +81,7 @@ Flag:
 - unspecified plural buckets such as `several key factors`, `various challenges`, or `multiple levers` when the text never names the members, evidence, or concrete consequence;
 - generic directional and comparative claims such as `performance is better`, `costs are lower`, or `adoption is growing` when the baseline, period, comparator, and size are absent;
 - abstract causal slogans such as `collaboration drives success` or `AI unlocks productivity` when neither a mechanism nor evidence supports the asserted effect;
+- formulaic negative parallelism such as `it is not X; it is Y` or `not X but Y` when both sides are broad abstractions and the contrast supplies no evidence, boundary, or consequence;
 - paraphrased blocks that repeat the same claim without adding a new fact, reason, implication, qualification, or action;
 - generic balance statements such as unnamed opportunities and challenges that avoid the actual trade-off;
 - magnitude or success claims without a measure, baseline, comparison, threshold, or citation.
@@ -96,6 +97,8 @@ Do not demand an exact count whenever the source legitimately reports `several`,
 Do not require every directional statement to contain a number. A concrete outcome such as `Patient symptoms improved` adds information even when effect size belongs elsewhere. Preserve comparisons that identify a reference group, prior version, time period, cause, condition, or explicit baseline. Flag generic business and result claims that supply none of those anchors, and request the missing context without fabricating it.
 
 Do not treat every causal sentence as slop. Preserve concrete events, established domain facts, experimental or quasi-experimental results, cited findings, explicit mechanisms, quantified effects, and conditional physical or technical relationships. For unsupported abstract causality, ask for the causal pathway and evidence or qualify the claim as a hypothesis or association; never fabricate attribution.
+
+Do not ban antithesis, correction, or `not X but Y`. These structures can precisely distinguish causes, outcomes, options, populations, measurements, legal states, or interpretations. Flag only generic negative parallelism that manufactures profundity or a false two-way frame without explaining why the distinction is true or useful.
 
 ## 4. Value test
 

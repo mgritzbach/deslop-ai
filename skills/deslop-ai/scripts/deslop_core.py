@@ -355,6 +355,12 @@ CONCRETE_CAUSAL_MECHANISM_RE = re.compile(
     r"eliminating|cutting|testing|measuring|assigning|replacing|combining)\b",
     re.I,
 )
+FORMULAIC_ANTITHESIS_RE = re.compile(
+    r"\b(?:it|the\s+future|leadership|success|innovation|change|AI|this|growth|strategy|"
+    r"progress|the\s+answer)\b.{0,60}\bnot\b.{0,80}(?:\bbut\b|[;—-]\s*"
+    r"(?:it|this|that)(?:\s+is|'s))",
+    re.I,
+)
 NON_ACTOR_BY_WORDS = {
     "end", "launch", "deadline", "today", "tomorrow", "yesterday", "next",
     "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
@@ -586,9 +592,17 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
     workplace_platitude = bool(WORKPLACE_PLATITUDE_RE.search(text)) and not has_number and not has_citation
     non_operational_action = bool(NON_OPERATIONAL_ACTION_RE.search(text)) and not has_number and not has_citation and not has_named
     unsupported_magnitude = bool(UNSUPPORTED_MAGNITUDE_RE.search(text)) and not has_number and not has_citation
+    has_substantive_contrast = bool(re.search(r"\bnot\b.{0,80}\bbut\b|,\s*not\b", text, re.I))
+    formulaic_antithesis = (
+        bool(FORMULAIC_ANTITHESIS_RE.search(text))
+        and not has_number
+        and not has_citation
+        and not has_named
+    )
     orphan_reference = (
         bool(BARE_REFERENCE_RE.search(text) or VAGUE_DEMONSTRATIVE_RE.search(text))
         and (role == "headline" or not nearby_texts)
+        and not has_substantive_contrast
     )
     ownerless_action = bool(
         AGENTLESS_DECISION_RE.search(text)
@@ -649,6 +663,8 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
 
     if duplicate:
         return {**base, "verdict": "needs-improvement", "meaning": "Repeats a nearby block.", "valueAdded": "No unique information detected.", "relevance": "Redundant in this location.", "reason": "This block duplicates nearby text.", "improvement": "Delete it or replace it with a distinct fact, reason, action, qualification, or decision."}
+    if formulaic_antithesis:
+        return {**base, "verdict": "needs-improvement", "meaning": "Frames two broad abstractions as a revealing opposition without establishing the distinction.", "valueAdded": "Creates rhetorical emphasis but supplies no evidence, boundary, mechanism, or concrete consequence.", "relevance": "The reader gains a slogan-like contrast rather than a usable claim.", "reason": "Formulaic negative parallelism contrasts abstract ideas without substantive support.", "improvement": "State the direct supported claim and explain the real distinction, evidence, or consequence. Keep the contrast only when both sides identify concrete alternatives or outcomes."}
     if pseudo_action:
         return {**base, "verdict": "needs-improvement", "meaning": "Suggests considering or exploring activity without committing to a defined decision or task.", "valueAdded": "Signals openness but does not identify what will be produced, decided, tested, or triggered.", "relevance": "The recipient must still convert the suggestion into an assignment or decision rule.", "reason": "Stacked hedges create a noncommittal pseudo-action.", "improvement": "State the actual supported action, decision, experiment, or risk condition. Name the owner and output when the source provides them; otherwise request those facts. Preserve genuine uncertainty instead of overstating confidence."}
     if unspecified_bucket:
@@ -692,7 +708,7 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
         and abstract_count == 0
         and not unique.intersection({"thing", "things", "something", "anything", "everything"})
     )
-    value_markers = int(has_number) + int(has_named) + int(content_verb_count > 0) + int(len(unique) >= 6) + int(has_explicit_comparison)
+    value_markers = int(has_number) + int(has_named) + int(content_verb_count > 0) + int(len(unique) >= 6) + int(has_explicit_comparison) + int(has_substantive_contrast)
     if specific_short_claim:
         return {**base, "verdict": "meaningful", "meaning": "States a concise subject-specific outcome or action.", "valueAdded": "Adds a concrete directional claim without generic filler.", "relevance": f"Fits the {role} role; verify evidentiary support in context.", "reason": "Short claim contains a concrete subject and content verb."}
     if value_markers >= 2 or role in {"table-cell", "headline"}:
@@ -809,6 +825,7 @@ class Analyzer:
                     else "VALUE_UNSPECIFIED_BUCKET" if assessment["reason"].startswith("Unspecified plural bucket")
                     else "VALUE_UNANCHORED_COMPARISON" if assessment["reason"].startswith("Generic directional")
                     else "VALUE_CAUSAL_SLOGAN" if assessment["reason"].startswith("Abstract causal slogan")
+                    else "VALUE_FORMULAIC_ANTITHESIS" if assessment["reason"].startswith("Formulaic negative parallelism")
                     else "VALUE_BLOCK"
                 )
                 findings.append(self._finding(

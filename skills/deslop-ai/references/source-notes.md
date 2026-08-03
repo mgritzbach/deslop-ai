@@ -21,6 +21,7 @@ Primary orientation:
 - U.S. National Archives concrete-word and logical-list guidance plus GOV.UK's `be specific rather than general` content principle, used to distinguish empty plural buckets from informative approximate or technical quantifiers.
 - UK Government Analysis Function guidance to put changes into context and describe their direction, size, period, and relevant comparator, used to identify unanchored generic comparisons while preserving concrete qualitative outcomes.
 - HM Treasury Magenta Book guidance on causal pathways, counterfactuals, attribution, and alternative explanations, used to distinguish unsupported abstract causal slogans from evidence-backed or mechanism-specific claims.
+- Wikipedia WikiProject AI Cleanup's descriptive observation of overused negative parallelism, combined with critical-writing guidance on false dilemmas; the construction is treated as a review candidate, never authorship evidence, and substantive contrasts remain protected.
 - Razniewski et al., “A Straightforward Pipeline for Targeted Entailment and Contradiction Detection,” as orientation for treating broader contradiction detection as a semantic inference task; the local deterministic fallback is intentionally limited to explicit, high-confidence conflicts.
 
 The bundled 434-word CSV is the style-related subset of the upstream 900-row excess-vocabulary dataset. Retain upstream attribution. Corpus-level markers cannot classify individual documents.
