@@ -307,6 +307,45 @@ class TestDeSlop(unittest.TestCase):
             self.assertEqual("meaningful", block_assessments[0]["verdict"])
             self.assertFalse(any(item["ruleId"] == "VALUE_OWNERLESS_ACTION" for item in block_findings))
 
+    def test_stacked_hedges_fail_while_real_uncertainty_and_options_survive(self) -> None:
+        pseudo_actions = [
+            ("We should consider exploring potential partnership opportunities.", "consulting"),
+            ("It may be worth looking into whether the process could be improved.", "academic"),
+            ("The team could potentially assess possible options.", "chat"),
+            ("Consideration should be given to further analysis.", "academic"),
+            ("We may want to explore this in more detail.", "chat"),
+            ("Further work could help inform future decisions.", "consulting"),
+            ("There may be an opportunity to potentially enhance alignment.", "social"),
+            ("It might be useful to consider engaging stakeholders.", "general"),
+            ("Perhaps we could explore possible avenues for collaboration.", "social"),
+            ("We should potentially consider a more strategic approach.", "consulting"),
+        ]
+        findings = []
+        assessments = []
+        for i, (text, genre) in enumerate(pseudo_actions):
+            block = {"blockId": f"pseudo-{i}", "locator": f"pseudo:{i}", "text": text, "sourceHash": str(i), "scope": f"pseudo-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], genre)
+            findings.extend(block_findings)
+            assessments.extend(block_assessments)
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments))
+        self.assertEqual(10, len([item for item in findings if item["ruleId"] == "VALUE_PSEUDO_ACTION"]))
+
+        controls = [
+            "The treatment may reduce mortality; the trial is underpowered.",
+            "Rain could delay the launch by two days.",
+            "If certification fails, launch may move to 20 May.",
+            "We should submit the application by Friday.",
+            "The board could approve either Option A or B on 12 May.",
+            "Further analysis requires 42 samples to reach 80% power.",
+            "Consider Option B only if cost exceeds EUR 2m.",
+            "We may reject bids that miss the safety threshold.",
+        ]
+        for i, text in enumerate(controls):
+            block = {"blockId": f"hedge-control-{i}", "locator": f"hedge-control:{i}", "text": text, "sourceHash": str(i), "scope": f"hedge-control-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], "general")
+            self.assertEqual("meaningful", block_assessments[0]["verdict"])
+            self.assertFalse(any(item["ruleId"] == "VALUE_PSEUDO_ACTION" for item in block_findings))
+
     def test_explicit_container_contradictions_bind_to_headline(self) -> None:
         conflicts = [
             ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),
