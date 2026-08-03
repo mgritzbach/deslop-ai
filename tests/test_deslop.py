@@ -262,6 +262,51 @@ class TestDeSlop(unittest.TestCase):
             self.assertEqual("meaningful", block_assessments[0]["verdict"])
             self.assertFalse(any(item["ruleId"] == "VALUE_ORPHAN_REFERENCE" for item in block_findings))
 
+    def test_ownerless_passive_actions_fail_without_banning_useful_passives(self) -> None:
+        ownerless = [
+            ("A decision was made to proceed.", "consulting"),
+            ("It was determined that changes are required.", "academic"),
+            ("The issue will be addressed.", "chat"),
+            ("Next steps will be defined.", "consulting"),
+            ("Approval is needed before launch.", "general"),
+            ("The proposal should be reviewed.", "chat"),
+            ("The process must be optimized.", "consulting"),
+            ("Feedback will be incorporated.", "academic"),
+            ("The approach will be finalized.", "general"),
+            ("Alignment needs to be established.", "social"),
+            ("The proposal should be reviewed by Friday.", "chat"),
+            ("The issue will be addressed by the end of June.", "consulting"),
+        ]
+        findings = []
+        assessments = []
+        for i, (text, genre) in enumerate(ownerless):
+            block = {"blockId": f"ownerless-{i}", "locator": f"ownerless:{i}", "text": text, "sourceHash": str(i), "scope": f"ownerless-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], genre)
+            findings.extend(block_findings)
+            assessments.extend(block_assessments)
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments))
+        self.assertEqual(12, len([item for item in findings if item["ruleId"] == "VALUE_OWNERLESS_ACTION"]))
+
+        controls = [
+            "The board approved Option A on 12 May.",
+            "Option A was approved by the board on 12 May.",
+            "Samples were stored at -80 C.",
+            "The protocol was approved by the ethics committee.",
+            "The bridge was built in 1890.",
+            "The launch was delayed because certification failed.",
+            "The files were encrypted with AES-256.",
+            "Maya will review the proposal by Friday.",
+            "The proposal will be reviewed by Maya.",
+            "Approval is required from Legal before launch.",
+            "The issue will be addressed by the security team.",
+            "A decision was made by the board to proceed.",
+        ]
+        for i, text in enumerate(controls):
+            block = {"blockId": f"passive-control-{i}", "locator": f"passive-control:{i}", "text": text, "sourceHash": str(i), "scope": f"passive-control-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], "general")
+            self.assertEqual("meaningful", block_assessments[0]["verdict"])
+            self.assertFalse(any(item["ruleId"] == "VALUE_OWNERLESS_ACTION" for item in block_findings))
+
     def test_explicit_container_contradictions_bind_to_headline(self) -> None:
         conflicts = [
             ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),

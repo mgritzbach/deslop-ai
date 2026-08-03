@@ -76,11 +76,14 @@ Flag:
 - premise echoes that repeat the request before offering any result;
 - generic headings whose sequence does not explain the document without its body text;
 - action items with no assignable owner, concrete deliverable, recipient, deadline, acceptance condition, or other definition of done that the source should contain;
+- agentless passive decisions and tasks such as `a decision was made`, `the issue will be addressed`, or `approval is needed` when the actor or accountable owner matters but is absent;
 - paraphrased blocks that repeat the same claim without adding a new fact, reason, implication, qualification, or action;
 - generic balance statements such as unnamed opportunities and challenges that avoid the actual trade-off;
 - magnitude or success claims without a measure, baseline, comparison, threshold, or citation.
 
 Do not require every sentence to contain every action field. Judge completeness across the visible container and communication job. Preserve useful directional claims, deliberate rhetoric, and formal language when the surrounding text supplies the missing operational context.
+
+Do not ban passive voice. It is legitimate when the actor is unknown, irrelevant, already clear, or less important than the method or result. Scientific methods, technical states, historical facts, and passives that explicitly name the actor are not ownerless-action failures merely because of their grammar.
 
 ## 4. Value test
 

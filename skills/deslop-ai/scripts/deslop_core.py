@@ -272,6 +272,31 @@ VAGUE_DEMONSTRATIVE_RE = re.compile(
     r"challenges|capabilities|assets)\b",
     re.I,
 )
+AGENTLESS_DECISION_RE = re.compile(
+    r"\b(?:(?:a|the)\s+)?(?:decision|determination|conclusion|agreement)\s+"
+    r"(?:was|were|has been|had been|will be)\s+(?:made|reached)\b|"
+    r"^\s*it\s+(?:was|has been|had been)\s+(?:decided|determined|agreed|concluded)\b",
+    re.I,
+)
+OWNERLESS_TASK_RE = re.compile(
+    r"\b(?:the\s+)?(?:issue|matter|request|proposal|plan|approach|process|next steps?|"
+    r"details?|requirements?|feedback|alignment|input)\s+"
+    r"(?:(?:will|should|must|needs?\s+to)\s+be|(?:is|are)\s+(?:being\s+)?)\s*"
+    r"(?:addressed|handled|reviewed|considered|defined|developed|finalized|implemented|"
+    r"optimized|aligned|validated|confirmed|incorporated|established)\b",
+    re.I,
+)
+OWNERLESS_REQUIREMENT_RE = re.compile(
+    r"^\s*(?:approval|validation|alignment|support|input|feedback|clarification)\s+"
+    r"(?:is|are)\s+(?:needed|required)\b",
+    re.I,
+)
+NON_ACTOR_BY_WORDS = {
+    "end", "launch", "deadline", "today", "tomorrow", "yesterday", "next",
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    "january", "february", "march", "april", "may", "june", "july", "august",
+    "september", "october", "november", "december",
+}
 VAGUE_AUTHORITY_RE = re.compile(
     r"\b(?:experts agree|research shows|studies show|the data (?:is|are) clear|it is widely (?:known|recognized))\b",
     re.I,
@@ -384,6 +409,13 @@ def _near_duplicate(text: str, other: str) -> bool:
     return containment >= 0.75 and union >= 0.55
 
 
+def _has_agent_cue(text: str) -> bool:
+    for match in re.finditer(r"\b(?:by|from)\s+(?:the\s+)?([A-Za-z][A-Za-z'-]*)", text, re.I):
+        if match.group(1).casefold() not in NON_ACTOR_BY_WORDS:
+            return True
+    return False
+
+
 def _polarity(text: str, positive: re.Pattern[str], negative: re.Pattern[str]) -> int:
     negative_matches = list(negative.finditer(text))
     scrubbed = text
@@ -494,6 +526,11 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
         bool(BARE_REFERENCE_RE.search(text) or VAGUE_DEMONSTRATIVE_RE.search(text))
         and (role == "headline" or not nearby_texts)
     )
+    ownerless_action = bool(
+        AGENTLESS_DECISION_RE.search(text)
+        or OWNERLESS_TASK_RE.search(text)
+        or OWNERLESS_REQUIREMENT_RE.search(text)
+    ) and not _has_agent_cue(text)
     vague_noun_count = sum(word in VAGUE_NOUN_STACK_WORDS for word in words)
     vague_noun_stack = (
         role in {"headline", "bullet", "caption"}
@@ -520,6 +557,8 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
 
     if duplicate:
         return {**base, "verdict": "needs-improvement", "meaning": "Repeats a nearby block.", "valueAdded": "No unique information detected.", "relevance": "Redundant in this location.", "reason": "This block duplicates nearby text.", "improvement": "Delete it or replace it with a distinct fact, reason, action, qualification, or decision."}
+    if ownerless_action:
+        return {**base, "verdict": "needs-improvement", "meaning": "States that a decision, review, approval, or task exists without naming the responsible actor.", "valueAdded": "The required activity is visible, but ownership and accountability are not.", "relevance": "The recipient cannot assign, verify, or escalate the action without knowing who decides or acts.", "reason": "Agentless passive decision or task hides responsibility.", "improvement": "Name the supported decision-maker or owner and the concrete action. Add a deadline or completion condition when the source provides one; otherwise request the missing owner instead of inventing it."}
     if orphan_reference:
         return {**base, "verdict": "needs-improvement", "meaning": "Makes a claim about an unnamed prior subject.", "valueAdded": "The consequence may be stated, but the reader cannot identify what causes or owns it.", "relevance": "A standalone block needs a clear antecedent in the same visible container; a headline must identify its subject directly.", "reason": "Orphaned pronoun or demonstrative reference has no clear antecedent.", "improvement": "Replace the pronoun or vague carrier noun with the exact subject already supported by the source. If the subject is absent, request it instead of guessing."}
     if generic_heading_label:
@@ -657,6 +696,7 @@ class Analyzer:
                 value_rule = (
                     "VALUE_NOUN_STACK" if assessment["reason"].startswith("Abstract noun stack")
                     else "VALUE_ORPHAN_REFERENCE" if assessment["reason"].startswith("Orphaned pronoun")
+                    else "VALUE_OWNERLESS_ACTION" if assessment["reason"].startswith("Agentless passive")
                     else "VALUE_BLOCK"
                 )
                 findings.append(self._finding(
