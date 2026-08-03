@@ -21,6 +21,7 @@ Treat every eligible text block as accountable communication. Do not infer AI au
    - Could the same wording fit three unrelated subjects?
    - Does it rely on an undefined referent, metaphor, category label, or presenter-only context?
    - If the container asks for a decision or action, does the headline state the required action, owner, or gating condition?
+   - Does the recipient receive a usable conclusion, task, or decision—or have to reconstruct the missing scope, owner, deliverable, evidence, or definition of done?
    Mark meaningless, duplicate, buzzword-only, unsupported, universal-fit, or context-dependent blocks `needs-improvement`. If a slide or page lacks a coherent standalone proposition, bind the finding to its headline or highest-level substantive block. Classify page numbers, footers, legal boilerplate, and decorative labels as exempt with a reason. Never leave an eligible block unassessed.
 6. For office files, read [format-safety.md](references/format-safety.md). Refuse edits crossing unsupported formatting, fields, citations, hyperlinks, equations, SmartArt, or stale source hashes. Never overwrite the source, shrink fonts, move objects, or restyle a file to make text fit.
 7. Run `python scripts/deslop.py request <request.json> --semantic-findings <semantic.json> --out <run-dir>`. The guarded command owns validation, deterministic audit, semantic merge, conservative rewrite planning, safe-copy application, integrity checks, reporting, and atomic publication.

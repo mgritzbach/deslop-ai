@@ -260,11 +260,93 @@ GENERIC_CONTRAST_RE = re.compile(
     re.I,
 )
 GENERIC_TRIPLET_RE = re.compile(r"\bevery\s+\w+\s+needs(?:\s+three\s+things)?\s*:", re.I)
+GENERIC_HEADINGS = {
+    "overview", "introduction", "background", "more information", "next steps",
+    "key takeaways", "our approach", "the opportunity", "summary", "conclusion",
+    "outlook", "discussion",
+}
+SELF_ANNOUNCING_RE = re.compile(
+    r"\b(?:this|the following)\s+(?:document|report|analysis|section|presentation)\s+"
+    r"(?:provides|presents|offers|explores|examines|outlines|identifies)\b",
+    re.I,
+)
+PREMISE_ECHO_RE = re.compile(
+    r"\byou asked (?:us|me) to\b.{0,140}\bthe following (?:analysis|section|report)\b",
+    re.I,
+)
+WORKPLACE_PLATITUDE_RE = re.compile(
+    r"\b(?:communication is key|alignment is critical|collaboration is essential|move forward with urgency|"
+    r"both opportunities and challenges|a balanced approach|ensure success|highlight(?:s)? the importance)\b",
+    re.I,
+)
+NON_OPERATIONAL_ACTION_RE = re.compile(
+    r"^\s*(?:please\s+)?(?:continue|explore|consider|engage|leverage|support|drive|foster|enhance)\b"
+    r".{0,180}\b(?:opportunities|stakeholders|initiatives|alignment|execution|efforts|workstreams|"
+    r"as appropriate|where possible)\b",
+    re.I,
+)
+UNSUPPORTED_MAGNITUDE_RE = re.compile(
+    r"\b(?:significant|substantial|dramatic|material|meaningful|considerable|remarkable|strong|robust|major)\s+"
+    r"(?:impact|improvement|growth|increase|decrease|reduction|results?|performance|success)\b|"
+    r"\b(?:improved|increased|decreased|grew|fell)\s+"
+    r"(?:significantly|substantially|dramatically|materially|meaningfully|considerably)\b|"
+    r"\b(?:highly|very|extremely)\s+(?:successful|effective|impactful|robust)\b|"
+    r"\bresults?\s+(?:was|were)\s+(?:highly\s+)?(?:robust|meaningful|strong|significant)\b",
+    re.I,
+)
 FURNITURE_PATTERNS = [
     re.compile(r"^\s*\d+\s*$"),
     re.compile(r"^\s*(?:confidential|draft|source|sources)\s*:?.*$", re.I),
     re.compile(r"^\s*(?:©|copyright)\b", re.I),
 ]
+SIGNATURE_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "because", "been", "being", "by",
+    "for", "from", "had", "has", "have", "in", "is", "it", "of", "on", "or", "that",
+    "the", "their", "this", "to", "was", "were", "will", "with",
+}
+
+
+def _signature_tokens(text: str) -> set[str]:
+    result: set[str] = set()
+    for token in re.findall(r"[A-Za-z]+|\d+(?:[.,]\d+)?%?", text.casefold()):
+        if token in SIGNATURE_STOPWORDS or len(token) <= 2:
+            continue
+        stem = token
+        for suffix in ("ing", "ied", "ed", "es", "s"):
+            if stem.endswith(suffix) and len(stem) - len(suffix) >= 4:
+                stem = stem[:-len(suffix)] + ("y" if suffix == "ied" else "")
+                break
+        result.add(stem)
+    return result
+
+
+def _comparison_anchors(text: str) -> tuple[set[str], set[str]]:
+    numbers = set(re.findall(r"(?<!\w)\d+(?:[.,]\d+)?%?(?!\w)", text))
+    names: set[str] = set()
+    for match in re.finditer(r"\b(?:[A-Z]{2,}|[A-Z][a-z]{2,})\b", text):
+        token = match.group(0)
+        prefix = text[:match.start()].rstrip()
+        at_sentence_start = not prefix or prefix[-1:] in ".!?"
+        if token not in {"AI", "LLM", "LLMS"} and (token.isupper() or not at_sentence_start):
+            names.add(token.casefold())
+    return numbers, names
+
+
+def _near_duplicate(text: str, other: str) -> bool:
+    left_numbers, left_names = _comparison_anchors(text)
+    right_numbers, right_names = _comparison_anchors(other)
+    if (left_numbers or right_numbers) and left_numbers != right_numbers:
+        return False
+    if (left_names or right_names) and left_names != right_names:
+        return False
+    left = _signature_tokens(text)
+    right = _signature_tokens(other)
+    if min(len(left), len(right)) < 4:
+        return False
+    intersection = len(left & right)
+    containment = intersection / min(len(left), len(right))
+    union = intersection / len(left | right)
+    return containment >= 0.75 and union >= 0.55
 
 
 def classify_role(block: dict[str, Any]) -> str:
@@ -312,23 +394,41 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
             break
     buzz_ratio = abstract_count / max(1, len(words))
     folded = text.casefold()
+    normalized = re.sub(r"\W+", " ", folded).strip()
     slop_phrase_count = sum(phrase in folded for phrase in LOCAL_SLOP_PHRASES)
     vague_authority = bool(VAGUE_AUTHORITY_RE.search(text)) and not has_number and not has_citation
     generic_contrast = bool(GENERIC_CONTRAST_RE.search(text)) and not has_number and not has_citation
     generic_triplet = bool(GENERIC_TRIPLET_RE.search(text)) and sum(word in ABSTRACT_QUALITIES for word in words) >= 2
+    generic_heading_label = role == "headline" and normalized in GENERIC_HEADINGS
+    self_announcing = bool(SELF_ANNOUNCING_RE.search(text) or PREMISE_ECHO_RE.search(text)) and not has_number and not has_citation
+    workplace_platitude = bool(WORKPLACE_PLATITUDE_RE.search(text)) and not has_number and not has_citation
+    non_operational_action = bool(NON_OPERATIONAL_ACTION_RE.search(text)) and not has_number and not has_citation and not has_named
+    unsupported_magnitude = bool(UNSUPPORTED_MAGNITUDE_RE.search(text)) and not has_number and not has_citation
     clustered_slop = (
         slop_phrase_count >= 2
         and not has_number
         and not has_citation
     )
-    normalized = re.sub(r"\W+", " ", text.casefold()).strip()
-    duplicate = any(normalized == re.sub(r"\W+", " ", other.casefold()).strip() for other in nearby_texts if other.strip())
+    duplicate = any(
+        normalized == re.sub(r"\W+", " ", other.casefold()).strip() or _near_duplicate(text, other)
+        for other in nearby_texts if other.strip()
+    )
     generic_heading = role == "headline" and len(words) <= 8 and buzz_ratio >= 0.25 and not has_number and content_verb_count == 0
     universal_fit = buzz_ratio >= 0.20 and not has_number and not has_named and content_verb_count <= 1
     too_short_to_judge = len(words) <= 2 and role not in {"headline", "table-cell"}
 
     if duplicate:
         return {**base, "verdict": "needs-improvement", "meaning": "Repeats a nearby block.", "valueAdded": "No unique information detected.", "relevance": "Redundant in this location.", "reason": "This block duplicates nearby text.", "improvement": "Delete it or replace it with a distinct fact, reason, action, qualification, or decision."}
+    if generic_heading_label:
+        return {**base, "verdict": "needs-improvement", "meaning": "Labels a section without describing its contents or takeaway.", "valueAdded": "Provides hierarchy but no standalone orientation.", "relevance": "Readers should understand the section when scanning headings alone.", "reason": "Generic heading depends entirely on the body and could label almost any document.", "improvement": "Name the specific subject, decision, action, or result covered by the section."}
+    if self_announcing:
+        return {**base, "verdict": "needs-improvement", "meaning": "Announces that analysis follows instead of supplying its result.", "valueAdded": "Restates the task or document function.", "relevance": "The recipient needs the conclusion, scope, or decision—not a description of the document.", "reason": "Self-announcing or premise-echo language consumes space without advancing the work.", "improvement": "Replace it with the principal finding, defined scope, or decision the analysis supports."}
+    if workplace_platitude:
+        return {**base, "verdict": "needs-improvement", "meaning": "States a broadly agreeable workplace principle or balance.", "valueAdded": "No owner, trade-off, evidence, or operational consequence is specified.", "relevance": "The recipient still has to infer what changes in the work.", "reason": "Generic workplace conclusion appears complete but transfers interpretation to the reader.", "improvement": "State the observed problem, the responsible owner, the decision or action, and the completion condition."}
+    if non_operational_action:
+        return {**base, "verdict": "needs-improvement", "meaning": "Uses an action verb without defining a finishable task.", "valueAdded": "Signals activity but not ownership or completion.", "relevance": "An action item must be assignable and verifiable.", "reason": "Non-operational action lacks a concrete object, owner, deadline, deliverable, or acceptance condition.", "improvement": "Name who will produce what, for whom, by when, and how completion will be checked."}
+    if unsupported_magnitude:
+        return {**base, "verdict": "needs-improvement", "meaning": "Claims a large, important, or successful result.", "valueAdded": "The direction may be clear, but its asserted magnitude or quality is not checkable.", "relevance": "Evaluative claims need a measure, threshold, comparison, or cited source.", "reason": "Unsupported magnitude or success language substitutes evaluation for evidence.", "improvement": "Report the measured change, baseline, comparison, acceptance criterion, or citation. Remove the modifier if no support exists."}
     if vague_authority:
         return {**base, "verdict": "needs-improvement", "meaning": "Invokes unnamed evidence or consensus.", "valueAdded": "No checkable support is supplied.", "relevance": "Authority claims must let the reader inspect the source.", "reason": "Uses vague authority language without a citation, named source, or measurable result.", "improvement": "Name and cite the source, report the relevant finding, or remove the authority claim."}
     if generic_contrast or generic_triplet:
@@ -441,11 +541,10 @@ class Analyzer:
     def analyze(self, blocks: list[dict[str, Any]], genre: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         findings: list[dict[str, Any]] = []
         assessments: list[dict[str, Any]] = []
-        by_scope: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        previous_by_scope: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for block in blocks:
-            by_scope[block.get("scope", "document")].append(block)
-        for block in blocks:
-            nearby = [item["text"] for item in by_scope[block.get("scope", "document")] if item["blockId"] != block["blockId"]]
+            scope = block.get("scope", "document")
+            nearby = [item["text"] for item in previous_by_scope[scope]]
             assessment = value_assessment(block, nearby, genre)
             assessments.append(assessment)
             findings.extend(self.analyze_block(block, genre))
@@ -455,6 +554,7 @@ class Analyzer:
                     assessment["reason"], "Improve or remove this block; do not publish empty words.",
                     suggestion=assessment["improvement"], confidence=0.88,
                 ).to_dict())
+            previous_by_scope[scope].append(block)
         return findings, assessments
 
 

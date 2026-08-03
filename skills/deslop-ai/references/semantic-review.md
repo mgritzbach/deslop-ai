@@ -61,6 +61,22 @@ When the source supports it, convert the title into a direct decision rule or im
 
 If the body contains a specific next step, compare it with the headline. Put the governing action or decision in the headline and reserve the callout for the immediate execution step. Do not repeat the same instruction twice.
 
+### Recipient-burden review
+
+Ask what work the text transfers to its recipient. A polished memo, report, email, slide, or action list still fails when the reader must reconstruct the assignment, locate the absent evidence, infer the decision, or redo the analysis.
+
+Flag:
+
+- self-announcing prose that says a document provides an overview, insights, or recommendations instead of stating them;
+- premise echoes that repeat the request before offering any result;
+- generic headings whose sequence does not explain the document without its body text;
+- action items with no assignable owner, concrete deliverable, recipient, deadline, acceptance condition, or other definition of done that the source should contain;
+- paraphrased blocks that repeat the same claim without adding a new fact, reason, implication, qualification, or action;
+- generic balance statements such as unnamed opportunities and challenges that avoid the actual trade-off;
+- magnitude or success claims without a measure, baseline, comparison, threshold, or citation.
+
+Do not require every sentence to contain every action field. Judge completeness across the visible container and communication job. Preserve useful directional claims, deliberate rhetoric, and formal language when the surrounding text supplies the missing operational context.
+
 ## 4. Value test
 
 Answer all five:

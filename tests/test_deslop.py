@@ -52,6 +52,8 @@ class TestDeSlop(unittest.TestCase):
         self.assertIn("presenter narration", guidance)
         self.assertIn("coherent standalone proposition", guidance)
         self.assertIn("Actionable-title gate", guidance)
+        self.assertIn("Recipient-burden review", guidance)
+        self.assertIn("definition of done", guidance)
         self.assertIn("What should happen next?", guidance)
         self.assertIn("gating condition", skill)
         self.assertIn("standalone-meaning gate", skill)
@@ -96,6 +98,76 @@ class TestDeSlop(unittest.TestCase):
         _, assessments = self.analyzer.analyze(blocks, "general")
         self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments[:len(slop)]))
         self.assertTrue(all(item["verdict"] == "meaningful" for item in assessments[len(slop):]))
+
+    def test_local_fallback_flags_recipient_burden_workslop(self) -> None:
+        workslop = [
+            ("Next steps", "headline"),
+            ("Overview", "headline"),
+            ("Please analyze the market and provide strategic recommendations.", "paragraph"),
+            ("This document provides a comprehensive overview of key considerations and actionable insights for moving forward.", "paragraph"),
+            ("Communication is key. We need to move forward with urgency.", "paragraph"),
+            ("The initiative presents both opportunities and challenges. A balanced approach will be essential to ensure success.", "paragraph"),
+            ("Continue exploring potential opportunities and engage key stakeholders as appropriate.", "bullet"),
+            ("Overall, the findings highlight the importance of adopting a proactive and strategic approach.", "paragraph"),
+            ("You asked us to assess the market. The following analysis examines the market and identifies key insights.", "paragraph"),
+            ("Organizations should prioritize agility, collaboration, and innovation to remain competitive.", "paragraph"),
+        ]
+        controls = [
+            ("Submit the application by 31 March", "headline"),
+            ("Maya will send the revised cost model to Finance by Friday.", "bullet"),
+            ("Please review sections 2 and 4 and approve one option by 17:00 Thursday.", "paragraph"),
+            ("Supplier certification remains incomplete; launch moves from 6 May to 20 May.", "paragraph"),
+        ]
+        blocks = [
+            {"blockId": f"burden-{i}", "locator": f"burden:{i}", "text": text, "sourceHash": str(i), "scope": f"burden-{i}", "role": role}
+            for i, (text, role) in enumerate(workslop + controls)
+        ]
+        _, assessments = self.analyzer.analyze(blocks, "general")
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments[:len(workslop)]))
+        self.assertTrue(all(item["verdict"] == "meaningful" for item in assessments[len(workslop):]))
+
+    def test_paraphrased_repetition_is_bounded_by_numbers_and_named_entities(self) -> None:
+        repeated = [
+            "Customer onboarding takes 14 days because two approvals are manual.",
+            "Two manual approvals make customer onboarding last 14 days.",
+        ]
+        controls = [
+            "The target is 8 days after automation.",
+            "Revenue increased 14% in Germany.",
+            "Revenue increased 14% in France.",
+        ]
+        blocks = [
+            {"blockId": f"repeat-{i}", "locator": f"repeat:{i}", "text": text, "sourceHash": str(i), "scope": "one-slide", "role": "paragraph"}
+            for i, text in enumerate(repeated + controls)
+        ]
+        _, assessments = self.analyzer.analyze(blocks, "consulting")
+        self.assertEqual("meaningful", assessments[0]["verdict"])
+        self.assertEqual("needs-improvement", assessments[1]["verdict"])
+        self.assertTrue(all(item["verdict"] == "meaningful" for item in assessments[2:]))
+
+    def test_unsupported_magnitude_requires_measure_or_source(self) -> None:
+        unsupported = [
+            "The initiative delivered significant impact across the organization.",
+            "Customer satisfaction improved dramatically after implementation.",
+            "The pilot was highly successful.",
+            "We achieved a substantial reduction in cycle time.",
+            "The results were robust and meaningful.",
+            "Engagement increased significantly.",
+        ]
+        controls = [
+            "Cycle time fell from 9 days to 4 days.",
+            "The pilot met all 12 acceptance criteria.",
+            "Sales rose after the price cut.",
+            "The difference was significant (Smith, 2024).",
+            "The storm intensified rapidly after landfall.",
+        ]
+        blocks = [
+            {"blockId": f"magnitude-{i}", "locator": f"magnitude:{i}", "text": text, "sourceHash": str(i), "scope": f"magnitude-{i}", "role": "paragraph"}
+            for i, text in enumerate(unsupported + controls)
+        ]
+        _, assessments = self.analyzer.analyze(blocks, "general")
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments[:len(unsupported)]))
+        self.assertTrue(all(item["verdict"] == "meaningful" for item in assessments[len(unsupported):]))
 
     def test_every_block_value_coverage(self) -> None:
         source = extract_source(request({"kind": "file", "path": str(self.fixtures / "sample.pptx")}))
