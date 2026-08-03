@@ -18,6 +18,7 @@ Primary orientation:
 - The CDC Style Guide's pronoun-and-antecedent guidance, used to flag orphaned references while preserving pronouns whose referent is explicit in the same container.
 - U.S. National Archives and CDC active-voice guidance, used narrowly to identify decisions and assignments whose passive construction hides a necessary actor; scientific and technical passive voice remains allowed when the actor is irrelevant or explicit.
 - U.S. National Archives guidance to omit needless modifiers and use concrete words, balanced with the UK Government uncertainty toolkit's requirement to communicate analytical uncertainty clearly rather than delete it.
+- U.S. National Archives concrete-word and logical-list guidance plus GOV.UK's `be specific rather than general` content principle, used to distinguish empty plural buckets from informative approximate or technical quantifiers.
 - Razniewski et al., “A Straightforward Pipeline for Targeted Entailment and Contradiction Detection,” as orientation for treating broader contradiction detection as a semantic inference task; the local deterministic fallback is intentionally limited to explicit, high-confidence conflicts.
 
 The bundled 434-word CSV is the style-related subset of the upstream 900-row excess-vocabulary dataset. Retain upstream attribution. Corpus-level markers cannot classify individual documents.

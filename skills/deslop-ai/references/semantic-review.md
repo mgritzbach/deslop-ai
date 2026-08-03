@@ -78,6 +78,7 @@ Flag:
 - action items with no assignable owner, concrete deliverable, recipient, deadline, acceptance condition, or other definition of done that the source should contain;
 - agentless passive decisions and tasks such as `a decision was made`, `the issue will be addressed`, or `approval is needed` when the actor or accountable owner matters but is absent;
 - stacked hedges and pseudo-actions such as `consider exploring`, `may be worth looking into`, or `further work could help inform future decisions` when no decision, test, output, owner, or trigger is defined;
+- unspecified plural buckets such as `several key factors`, `various challenges`, or `multiple levers` when the text never names the members, evidence, or concrete consequence;
 - paraphrased blocks that repeat the same claim without adding a new fact, reason, implication, qualification, or action;
 - generic balance statements such as unnamed opportunities and challenges that avoid the actual trade-off;
 - magnitude or success claims without a measure, baseline, comparison, threshold, or citation.
@@ -87,6 +88,8 @@ Do not require every sentence to contain every action field. Judge completeness 
 Do not ban passive voice. It is legitimate when the actor is unknown, irrelevant, already clear, or less important than the method or result. Scientific methods, technical states, historical facts, and passives that explicitly name the actor are not ownerless-action failures merely because of their grammar.
 
 Do not remove uncertainty merely to sound decisive. Preserve calibrated scientific claims, explicit risks, policy permissions, and conditional options. The defect is compounded noncommitment without an operational object—not a single `may`, `might`, `could`, or `should` tied to a real outcome or condition.
+
+Do not demand an exact count whenever the source legitimately reports `several`, `many`, `various`, or `multiple`. Approximate quantifiers can carry real information. Preserve them when attached to a concrete population and predicate, a technical term, an enumerated list, a measured range, or a stated consequence. The defect is an empty category that promises unnamed content.
 
 ## 4. Value test
 

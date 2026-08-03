@@ -237,6 +237,7 @@ CONTENT_VERBS = {
     "approve", "assess", "choose", "decide", "delay", "deliver", "file", "hire",
     "improve", "move", "produce", "publish", "reduce", "reject", "review", "select",
     "send", "start", "stop", "store", "submit",
+    "cover", "covers", "lack", "lacks", "use", "uses", "withdrew",
 }
 LOCAL_SLOP_PHRASES = {
     "a quiet shift", "today's fast-paced", "fast-paced landscape", "evolving landscape",
@@ -311,6 +312,19 @@ HEDGE_ACTION_MARKER_RE = re.compile(
     re.I,
 )
 EXPLICIT_CONDITION_RE = re.compile(r"\b(?:if|unless|when|whenever|provided that|subject to|depending on)\b", re.I)
+UNSPECIFIED_BUCKET_RE = re.compile(
+    r"\b(?:several|numerous|various|multiple|many|a\s+range\s+of|a\s+variety\s+of)\s+"
+    r"(?:(?:key|strategic|potential|important|broad)\s+)?(?:factors?|opportunities|challenges|considerations|dimensions|areas|"
+    r"initiatives|stakeholders|perspectives|benefits|levers|themes|elements|aspects|"
+    r"priorities|issues)\b",
+    re.I,
+)
+SPECIFIC_BUCKET_ACTION_RE = re.compile(
+    r"\b(?:approved|rejected|signed|submitted|missed|failed|completed|selected|voted|"
+    r"filed|withdrew|produced|use|uses|lack|lacks|covers|stored|measured|reported|"
+    r"named|listed|include|includes)\b",
+    re.I,
+)
 NON_ACTOR_BY_WORDS = {
     "end", "launch", "deadline", "today", "tomorrow", "yesterday", "next",
     "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
@@ -555,6 +569,14 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
     pseudo_action = (
         bool(PSEUDO_ACTION_RE.search(text)) or hedge_action_count >= 3
     ) and not EXPLICIT_CONDITION_RE.search(text)
+    unspecified_bucket = (
+        bool(UNSPECIFIED_BUCKET_RE.search(text))
+        and not has_number
+        and not has_citation
+        and ":" not in text
+        and ";" not in text
+        and not SPECIFIC_BUCKET_ACTION_RE.search(text)
+    )
     vague_noun_count = sum(word in VAGUE_NOUN_STACK_WORDS for word in words)
     vague_noun_stack = (
         role in {"headline", "bullet", "caption"}
@@ -583,6 +605,8 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
         return {**base, "verdict": "needs-improvement", "meaning": "Repeats a nearby block.", "valueAdded": "No unique information detected.", "relevance": "Redundant in this location.", "reason": "This block duplicates nearby text.", "improvement": "Delete it or replace it with a distinct fact, reason, action, qualification, or decision."}
     if pseudo_action:
         return {**base, "verdict": "needs-improvement", "meaning": "Suggests considering or exploring activity without committing to a defined decision or task.", "valueAdded": "Signals openness but does not identify what will be produced, decided, tested, or triggered.", "relevance": "The recipient must still convert the suggestion into an assignment or decision rule.", "reason": "Stacked hedges create a noncommittal pseudo-action.", "improvement": "State the actual supported action, decision, experiment, or risk condition. Name the owner and output when the source provides them; otherwise request those facts. Preserve genuine uncertainty instead of overstating confidence."}
+    if unspecified_bucket:
+        return {**base, "verdict": "needs-improvement", "meaning": "Refers to a plural category without identifying its members or substantive relationship.", "valueAdded": "Promises factors, opportunities, challenges, or levers but does not tell the reader what they are.", "relevance": "A bucket label adds value only when its contents, evidence, or concrete consequence are visible.", "reason": "Unspecified plural bucket implies substance without supplying it.", "improvement": "Name the supported members, state the concrete relationship or consequence, or delete the bucket claim. If the source does not identify them, request the missing list rather than inventing it."}
     if ownerless_action:
         return {**base, "verdict": "needs-improvement", "meaning": "States that a decision, review, approval, or task exists without naming the responsible actor.", "valueAdded": "The required activity is visible, but ownership and accountability are not.", "relevance": "The recipient cannot assign, verify, or escalate the action without knowing who decides or acts.", "reason": "Agentless passive decision or task hides responsibility.", "improvement": "Name the supported decision-maker or owner and the concrete action. Add a deadline or completion condition when the source provides one; otherwise request the missing owner instead of inventing it."}
     if orphan_reference:
@@ -724,6 +748,7 @@ class Analyzer:
                     else "VALUE_ORPHAN_REFERENCE" if assessment["reason"].startswith("Orphaned pronoun")
                     else "VALUE_OWNERLESS_ACTION" if assessment["reason"].startswith("Agentless passive")
                     else "VALUE_PSEUDO_ACTION" if assessment["reason"].startswith("Stacked hedges")
+                    else "VALUE_UNSPECIFIED_BUCKET" if assessment["reason"].startswith("Unspecified plural bucket")
                     else "VALUE_BLOCK"
                 )
                 findings.append(self._finding(

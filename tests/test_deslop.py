@@ -346,6 +346,46 @@ class TestDeSlop(unittest.TestCase):
             self.assertEqual("meaningful", block_assessments[0]["verdict"])
             self.assertFalse(any(item["ruleId"] == "VALUE_PSEUDO_ACTION" for item in block_findings))
 
+    def test_unspecified_buckets_fail_while_approximate_and_technical_claims_survive(self) -> None:
+        empty_buckets = [
+            ("Several key factors drive success.", "consulting"),
+            ("There are numerous opportunities for growth.", "social"),
+            ("Various challenges must be addressed.", "chat"),
+            ("Multiple dimensions should be considered.", "academic"),
+            ("A range of strategic initiatives will create value.", "consulting"),
+            ("Many stakeholders have different perspectives.", "general"),
+            ("The solution delivers a variety of benefits.", "social"),
+            ("Several considerations inform the path forward.", "consulting"),
+            ("Numerous factors contribute to this outcome.", "academic"),
+            ("Multiple levers can unlock impact.", "consulting"),
+        ]
+        findings = []
+        assessments = []
+        for i, (text, genre) in enumerate(empty_buckets):
+            block = {"blockId": f"bucket-{i}", "locator": f"bucket:{i}", "text": text, "sourceHash": str(i), "scope": f"bucket-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], genre)
+            findings.extend(block_findings)
+            assessments.extend(block_assessments)
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments))
+        self.assertEqual(10, len([item for item in findings if item["ruleId"] == "VALUE_UNSPECIFIED_BUCKET"]))
+
+        controls = [
+            "Three factors drive delay: certification, funding, and testing.",
+            "Several participants withdrew after the dosage increase.",
+            "Various ministries use different procurement thresholds.",
+            "Multiple regression models produced the same estimate.",
+            "The system supports a range of voltages from 110 V to 240 V.",
+            "Many rural clinics lack backup generators.",
+            "Several suppliers failed certification; two were removed.",
+            "The survey covers multiple dimensions of trust: competence, integrity, and benevolence.",
+            "Multiple stakeholders approved the plan on Monday.",
+        ]
+        for i, text in enumerate(controls):
+            block = {"blockId": f"bucket-control-{i}", "locator": f"bucket-control:{i}", "text": text, "sourceHash": str(i), "scope": f"bucket-control-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], "general")
+            self.assertEqual("meaningful", block_assessments[0]["verdict"])
+            self.assertFalse(any(item["ruleId"] == "VALUE_UNSPECIFIED_BUCKET" for item in block_findings))
+
     def test_explicit_container_contradictions_bind_to_headline(self) -> None:
         conflicts = [
             ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),
