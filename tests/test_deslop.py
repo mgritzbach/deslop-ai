@@ -170,6 +170,42 @@ class TestDeSlop(unittest.TestCase):
         self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments[:len(unsupported)]))
         self.assertTrue(all(item["verdict"] == "meaningful" for item in assessments[len(unsupported):]))
 
+    def test_abstract_noun_stacks_fail_without_action_but_keep_concrete_labels(self) -> None:
+        empty_stacks = [
+            ("Strategic Transformation Enablement", "consulting"),
+            ("Enterprise Capability Optimization", "consulting"),
+            ("Holistic Innovation Acceleration", "social"),
+            ("Operational Excellence Realization", "chat"),
+            ("Stakeholder Alignment Facilitation", "chat"),
+            ("Future-Ready Value Creation", "social"),
+            ("End-to-End Ecosystem Orchestration", "academic"),
+            ("Scalable Impact Delivery", "general"),
+            ("Organizational Agility Enhancement", "consulting"),
+            ("Integrated Solution Implementation", "general"),
+        ]
+        controls = [
+            ("Supplier certification deadline: 31 March", "consulting"),
+            ("Revenue forecast for Germany: EUR 4.2m", "consulting"),
+            ("Network security audit starts Monday", "general"),
+            ("Customer onboarding time fell to 4 days", "social"),
+            ("Warehouse fire inspection report", "general"),
+            ("Contract approval owner: Finance", "chat"),
+            ("Enterprise software implementation starts Monday", "academic"),
+            ("Operational excellence team cut defects 12%", "consulting"),
+            ("Harvard Innovation Ecosystem includes 42 labs", "academic"),
+        ]
+        assessments = []
+        findings = []
+        for i, (text, genre) in enumerate(empty_stacks + controls):
+            block = {"blockId": f"noun-stack-{i}", "locator": f"noun-stack:{i}", "text": text, "sourceHash": str(i), "scope": f"noun-stack-{i}", "role": "headline"}
+            block_findings, block_assessments = self.analyzer.analyze([block], genre)
+            findings.extend(block_findings)
+            assessments.extend(block_assessments)
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments[:len(empty_stacks)]))
+        self.assertTrue(all(item["verdict"] == "meaningful" for item in assessments[len(empty_stacks):]))
+        noun_findings = [item for item in findings if item["ruleId"] == "VALUE_NOUN_STACK"]
+        self.assertEqual(10, len(noun_findings))
+
     def test_explicit_container_contradictions_bind_to_headline(self) -> None:
         conflicts = [
             ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),

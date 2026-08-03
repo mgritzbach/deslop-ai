@@ -95,6 +95,7 @@ Use observable language. “Sounds AI-generated” is never a reason.
 Indicators of low value include:
 
 - buzzword or abstract-noun density without an actor, action, object, or consequence;
+- compressed noun stacks that hide the relationship or action, especially labels such as `[abstract modifier] + [capability/process] + [outcome]` that could name many unrelated initiatives;
 - generic claims such as “unlocking value through innovation”;
 - headline/body duplication;
 - three near-synonymous bullets;
@@ -104,6 +105,8 @@ Indicators of low value include:
 - transitions or summaries with no information gain.
 
 Concrete nouns and numbers are not automatically meaningful. A metric without a denominator, source, baseline, or decision may still fail.
+
+Do not flag a noun string merely because it is compact. Preserve established technical terms and concrete labels when their referent is clear, and preserve short labels whose surrounding container supplies the missing relationship. Dates, measures, named owners, domain-specific objects, or an explicit action can make a compact label useful.
 
 ## 5. Verdicts
 

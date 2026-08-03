@@ -250,6 +250,14 @@ ABSTRACT_QUALITIES = {
     "clarity", "courage", "consistency", "trust", "mindset", "authenticity",
     "purpose", "passion", "potential", "growth", "resilience", "excellence",
 }
+VAGUE_NOUN_STACK_WORDS = {
+    "acceleration", "agility", "alignment", "capability", "collaboration",
+    "creation", "delivery", "ecosystem", "enablement", "end-to-end", "enhancement",
+    "enterprise", "excellence", "facilitation", "future-ready", "holistic",
+    "impact", "implementation", "innovation", "integrated", "optimization",
+    "operational", "orchestration", "organizational", "realization", "scalable", "solution",
+    "stakeholder", "strategic", "transformation", "value",
+}
 VAGUE_AUTHORITY_RE = re.compile(
     r"\b(?:experts agree|research shows|studies show|the data (?:is|are) clear|it is widely (?:known|recognized))\b",
     re.I,
@@ -468,6 +476,17 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
     workplace_platitude = bool(WORKPLACE_PLATITUDE_RE.search(text)) and not has_number and not has_citation
     non_operational_action = bool(NON_OPERATIONAL_ACTION_RE.search(text)) and not has_number and not has_citation and not has_named
     unsupported_magnitude = bool(UNSUPPORTED_MAGNITUDE_RE.search(text)) and not has_number and not has_citation
+    vague_noun_count = sum(word in VAGUE_NOUN_STACK_WORDS for word in words)
+    vague_noun_stack = (
+        role in {"headline", "bullet", "caption"}
+        and 2 <= len(words) <= 8
+        and vague_noun_count >= 2
+        and vague_noun_count / len(words) >= 0.60
+        and not has_number
+        and not has_citation
+        and (not has_named or vague_noun_count == len(words))
+        and ":" not in text
+    )
     clustered_slop = (
         slop_phrase_count >= 2
         and not has_number
@@ -493,6 +512,8 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
         return {**base, "verdict": "needs-improvement", "meaning": "Uses an action verb without defining a finishable task.", "valueAdded": "Signals activity but not ownership or completion.", "relevance": "An action item must be assignable and verifiable.", "reason": "Non-operational action lacks a concrete object, owner, deadline, deliverable, or acceptance condition.", "improvement": "Name who will produce what, for whom, by when, and how completion will be checked."}
     if unsupported_magnitude:
         return {**base, "verdict": "needs-improvement", "meaning": "Claims a large, important, or successful result.", "valueAdded": "The direction may be clear, but its asserted magnitude or quality is not checkable.", "relevance": "Evaluative claims need a measure, threshold, comparison, or cited source.", "reason": "Unsupported magnitude or success language substitutes evaluation for evidence.", "improvement": "Report the measured change, baseline, comparison, acceptance criterion, or citation. Remove the modifier if no support exists."}
+    if vague_noun_stack:
+        return {**base, "verdict": "needs-improvement", "meaning": "Stacks abstract process or outcome nouns without stating their relationship.", "valueAdded": "Names an intended theme but not an actor, action, object, result, or decision.", "relevance": "A compact label still needs enough information for a reader to understand what happens or why it matters.", "reason": "Abstract noun stack hides the action and could label many unrelated initiatives.", "improvement": "Unpack the nouns: name who changes or produces what, for whom, and what verified result, condition, or decision follows. Keep the label only if the surrounding container supplies that meaning."}
     if vague_authority:
         return {**base, "verdict": "needs-improvement", "meaning": "Invokes unnamed evidence or consensus.", "valueAdded": "No checkable support is supplied.", "relevance": "Authority claims must let the reader inspect the source.", "reason": "Uses vague authority language without a citation, named source, or measurable result.", "improvement": "Name and cite the source, report the relevant finding, or remove the authority claim."}
     if generic_contrast or generic_triplet:
@@ -613,8 +634,9 @@ class Analyzer:
             assessments.append(assessment)
             findings.extend(self.analyze_block(block, genre))
             if assessment["verdict"] == "needs-improvement":
+                value_rule = "VALUE_NOUN_STACK" if assessment["reason"].startswith("Abstract noun stack") else "VALUE_BLOCK"
                 findings.append(self._finding(
-                    block, "VALUE_BLOCK", "meaning and information value", "E", "high",
+                    block, value_rule, "meaning and information value", "E", "high",
                     assessment["reason"], "Improve or remove this block; do not publish empty words.",
                     suggestion=assessment["improvement"], confidence=0.88,
                 ).to_dict())
