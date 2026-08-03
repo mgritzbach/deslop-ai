@@ -234,7 +234,7 @@ CONTENT_VERBS = {
     "changed", "approved", "rejected", "owns", "will", "must", "costs", "saved",
     "sold", "opened", "closed", "reported", "compared", "requires", "caused",
     "cut", "removed", "delayed", "estimate", "estimates", "tested", "failed",
-    "approve", "assess", "choose", "decide", "delay", "deliver", "file", "hire",
+    "approve", "assess", "choose", "decide", "delay", "deliver", "file", "hire", "identify", "identifies",
     "improve", "move", "produce", "publish", "reduce", "reject", "review", "select",
     "send", "start", "stop", "store", "submit",
     "cover", "covers", "lack", "lacks", "rose", "use", "uses", "withdrew",
@@ -338,6 +338,21 @@ COMPARISON_ANCHOR_RE = re.compile(
     r"\b(?:than|versus|vs\.?|compared\s+(?:with|to)|relative\s+to|after|before|since|"
     r"year[- ]on[- ]year|month[- ]on[- ]month|quarter[- ]on[- ]quarter|week[- ]on[- ]week|"
     r"over\s+the\s+past|between|baseline|target)\b|\bfrom\b.{0,50}\bto\b",
+    re.I,
+)
+ABSTRACT_CAUSAL_SLOGAN_RE = re.compile(
+    r"\b(?:collaboration|innovation|(?:strong\s+)?leadership|culture|AI|trust|alignment|"
+    r"data|agility|customer[- ]centricity|strategy|technology|transformation)\b.{0,25}\b"
+    r"(?:drives?|drove|enables?|enabled|leads?\s+to|led\s+to|is\s+(?:the\s+)?key\s+to|"
+    r"unlocks?|unlocked|creates?|created|accelerates?|accelerated|empowers?|ensures?|"
+    r"fuels?|powers?)\b.{0,35}\b(?:success|growth|better\s+outcomes?|transformation|"
+    r"productivity|high-performing\s+teams?|execution|smarter\s+decisions?|resilience|"
+    r"sustainable\s+value|competitive\s+advantage|meaningful\s+impact|impact|excellence)\b",
+    re.I,
+)
+CONCRETE_CAUSAL_MECHANISM_RE = re.compile(
+    r"\b(?:by|through)\s+(?:reducing|increasing|removing|adding|changing|automating|"
+    r"eliminating|cutting|testing|measuring|assigning|replacing|combining)\b",
     re.I,
 )
 NON_ACTOR_BY_WORDS = {
@@ -601,6 +616,13 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
         and not has_number
         and not has_citation
     )
+    unsupported_causal_slogan = (
+        bool(ABSTRACT_CAUSAL_SLOGAN_RE.search(text))
+        and not has_number
+        and not has_citation
+        and not EXPLICIT_CONDITION_RE.search(text)
+        and not CONCRETE_CAUSAL_MECHANISM_RE.search(text)
+    )
     vague_noun_count = sum(word in VAGUE_NOUN_STACK_WORDS for word in words)
     vague_noun_stack = (
         role in {"headline", "bullet", "caption"}
@@ -633,6 +655,8 @@ def value_assessment(block: dict[str, Any], nearby_texts: list[str], genre: str)
         return {**base, "verdict": "needs-improvement", "meaning": "Refers to a plural category without identifying its members or substantive relationship.", "valueAdded": "Promises factors, opportunities, challenges, or levers but does not tell the reader what they are.", "relevance": "A bucket label adds value only when its contents, evidence, or concrete consequence are visible.", "reason": "Unspecified plural bucket implies substance without supplying it.", "improvement": "Name the supported members, state the concrete relationship or consequence, or delete the bucket claim. If the source does not identify them, request the missing list rather than inventing it."}
     if unanchored_comparison:
         return {**base, "verdict": "needs-improvement", "meaning": "Claims improvement, decline, or comparative advantage without identifying the reference point.", "valueAdded": "Provides direction but not the baseline, period, comparator, or size needed to interpret it.", "relevance": "A reader cannot judge whether the change is meaningful or decision-relevant without comparison context.", "reason": "Generic directional or comparative claim lacks a baseline, period, or reference group.", "improvement": "Add the supported comparator, time period, baseline, and measured change. If the source contains only direction, state that limitation rather than inventing a number."}
+    if unsupported_causal_slogan:
+        return {**base, "verdict": "needs-improvement", "meaning": "Asserts that one broad abstraction causes another desirable outcome.", "valueAdded": "States a causal conclusion but supplies no mechanism, evidence, counterfactual, condition, or measured effect.", "relevance": "The audience cannot distinguish an evidence-backed causal claim from a motivational slogan.", "reason": "Abstract causal slogan presents an unsupported cause-and-effect relationship.", "improvement": "State the supported mechanism and evidence, qualify the relationship as a hypothesis or association, or delete the causal claim. Never invent a study, counterfactual, or effect size."}
     if ownerless_action:
         return {**base, "verdict": "needs-improvement", "meaning": "States that a decision, review, approval, or task exists without naming the responsible actor.", "valueAdded": "The required activity is visible, but ownership and accountability are not.", "relevance": "The recipient cannot assign, verify, or escalate the action without knowing who decides or acts.", "reason": "Agentless passive decision or task hides responsibility.", "improvement": "Name the supported decision-maker or owner and the concrete action. Add a deadline or completion condition when the source provides one; otherwise request the missing owner instead of inventing it."}
     if orphan_reference:
@@ -784,6 +808,7 @@ class Analyzer:
                     else "VALUE_PSEUDO_ACTION" if assessment["reason"].startswith("Stacked hedges")
                     else "VALUE_UNSPECIFIED_BUCKET" if assessment["reason"].startswith("Unspecified plural bucket")
                     else "VALUE_UNANCHORED_COMPARISON" if assessment["reason"].startswith("Generic directional")
+                    else "VALUE_CAUSAL_SLOGAN" if assessment["reason"].startswith("Abstract causal slogan")
                     else "VALUE_BLOCK"
                 )
                 findings.append(self._finding(

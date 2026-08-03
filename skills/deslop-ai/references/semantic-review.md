@@ -80,6 +80,7 @@ Flag:
 - stacked hedges and pseudo-actions such as `consider exploring`, `may be worth looking into`, or `further work could help inform future decisions` when no decision, test, output, owner, or trigger is defined;
 - unspecified plural buckets such as `several key factors`, `various challenges`, or `multiple levers` when the text never names the members, evidence, or concrete consequence;
 - generic directional and comparative claims such as `performance is better`, `costs are lower`, or `adoption is growing` when the baseline, period, comparator, and size are absent;
+- abstract causal slogans such as `collaboration drives success` or `AI unlocks productivity` when neither a mechanism nor evidence supports the asserted effect;
 - paraphrased blocks that repeat the same claim without adding a new fact, reason, implication, qualification, or action;
 - generic balance statements such as unnamed opportunities and challenges that avoid the actual trade-off;
 - magnitude or success claims without a measure, baseline, comparison, threshold, or citation.
@@ -93,6 +94,8 @@ Do not remove uncertainty merely to sound decisive. Preserve calibrated scientif
 Do not demand an exact count whenever the source legitimately reports `several`, `many`, `various`, or `multiple`. Approximate quantifiers can carry real information. Preserve them when attached to a concrete population and predicate, a technical term, an enumerated list, a measured range, or a stated consequence. The defect is an empty category that promises unnamed content.
 
 Do not require every directional statement to contain a number. A concrete outcome such as `Patient symptoms improved` adds information even when effect size belongs elsewhere. Preserve comparisons that identify a reference group, prior version, time period, cause, condition, or explicit baseline. Flag generic business and result claims that supply none of those anchors, and request the missing context without fabricating it.
+
+Do not treat every causal sentence as slop. Preserve concrete events, established domain facts, experimental or quasi-experimental results, cited findings, explicit mechanisms, quantified effects, and conditional physical or technical relationships. For unsupported abstract causality, ask for the causal pathway and evidence or qualify the claim as a hypothesis or association; never fabricate attribution.
 
 ## 4. Value test
 

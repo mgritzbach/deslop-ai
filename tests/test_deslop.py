@@ -429,6 +429,51 @@ class TestDeSlop(unittest.TestCase):
             self.assertEqual("meaningful", block_assessments[0]["verdict"])
             self.assertFalse(any(item["ruleId"] == "VALUE_UNANCHORED_COMPARISON" for item in block_findings))
 
+    def test_abstract_causal_slogans_fail_but_evidence_and_mechanisms_survive(self) -> None:
+        slogans = [
+            ("Collaboration drives success.", "consulting"),
+            ("Innovation enables growth.", "social"),
+            ("Strong leadership leads to better outcomes.", "general"),
+            ("Culture is the key to transformation.", "consulting"),
+            ("AI unlocks productivity.", "chat"),
+            ("Trust creates high-performing teams.", "social"),
+            ("Alignment accelerates execution.", "consulting"),
+            ("Data empowers smarter decisions.", "academic"),
+            ("Agility ensures resilience.", "general"),
+            ("Customer centricity fuels sustainable value.", "consulting"),
+            ("Strategy powers competitive advantage.", "consulting"),
+            ("Technology drives meaningful impact.", "social"),
+        ]
+        findings = []
+        assessments = []
+        for i, (text, genre) in enumerate(slogans):
+            block = {"blockId": f"causal-{i}", "locator": f"causal:{i}", "text": text, "sourceHash": str(i), "scope": f"causal-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], genre)
+            findings.extend(block_findings)
+            assessments.extend(block_assessments)
+        self.assertTrue(all(item["verdict"] == "needs-improvement" for item in assessments))
+        self.assertEqual(12, len([item for item in findings if item["ruleId"] == "VALUE_CAUSAL_SLOGAN"]))
+
+        controls = [
+            "Removing two approvals cut onboarding from 14 days to 8.",
+            "The price cut increased sales by 12%.",
+            "Random assignment identifies the treatment effect.",
+            "Higher rainfall causes flooding when drainage capacity is exceeded.",
+            "The outage delayed launch by two days.",
+            "Smoking causes lung cancer.",
+            "Trust reduced transaction costs in the experiment (Smith, 2024).",
+            "Encryption prevents unauthorized access when keys remain secret.",
+            "The new routing rule reduced travel time relative to the old rule.",
+            "Collaboration drives success by assigning Maya to each interface.",
+            "Alignment ensures resilience when both teams use the same interface contract.",
+            "Leadership led to better outcomes in the randomized trial (Smith, 2024).",
+        ]
+        for i, text in enumerate(controls):
+            block = {"blockId": f"causal-control-{i}", "locator": f"causal-control:{i}", "text": text, "sourceHash": str(i), "scope": f"causal-control-{i}", "role": "paragraph"}
+            block_findings, block_assessments = self.analyzer.analyze([block], "general")
+            self.assertEqual("meaningful", block_assessments[0]["verdict"])
+            self.assertFalse(any(item["ruleId"] == "VALUE_CAUSAL_SLOGAN" for item in block_findings))
+
     def test_explicit_container_contradictions_bind_to_headline(self) -> None:
         conflicts = [
             ("Revenue grew 20% in Germany.", "Revenue fell 8% in Germany."),
